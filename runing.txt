@@ -1,8 +1,4 @@
-Yang perlu kamu tahu dulu:
-- Ini sudah jadi sebagai website web, bukan React Native mobile app.
-- UI demo-nya sudah bisa jalan lokal.
-- Prisma/PostgreSQL-nya sudah disiapkan, tapi belum dihubungkan penuh ke UI sebagai API backend nyata.
-- Login admin demo sudah ada.
+
 
 **Panduan menjalankan di laptop ini**
 1. Pastikan terpasang:
