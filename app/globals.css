@@ -15,7 +15,8 @@
   --radius-lg: 22px;
   --radius-md: 16px;
   --shadow: 0 22px 48px rgba(0, 0, 0, 0.32);
-  --container: 1200px;
+  --container: 960px;
+  --header-space: 118px;
 }
 
 html[data-theme="light"] {
@@ -40,17 +41,21 @@ html[data-theme="light"] {
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   color: var(--text);
   background:
     radial-gradient(circle at top left, rgba(241, 198, 74, 0.16), transparent 32%),
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 24%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
   font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 body::before {
@@ -83,17 +88,18 @@ img {
 
 .main-shell {
   width: 100%;
-  padding: 124px 20px 64px;
+  padding: calc(var(--header-space) - 10px) clamp(10px, 1.2vw, 16px) 48px;
 }
 
 .page-frame {
-  max-width: var(--container);
+  width: min(100%, var(--container));
   margin: 0 auto;
 }
 
 .site-shell {
-  max-width: var(--container);
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .topbar,
@@ -129,6 +135,7 @@ img {
 
 .topbar-inner {
   max-width: var(--container);
+  width: min(100%, var(--container));
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -147,9 +154,9 @@ img {
 }
 
 .brand-mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
   color: #241900;
@@ -165,7 +172,7 @@ img {
 }
 
 .nav-link {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 999px;
   color: var(--muted);
   border: 1px solid transparent;
@@ -189,7 +196,7 @@ img {
   gap: 8px;
   border: 0;
   border-radius: 999px;
-  padding: 12px 18px;
+  padding: 10px 16px;
   cursor: pointer;
   transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, opacity 120ms ease;
 }
@@ -225,8 +232,9 @@ img {
 }
 
 .button-icon {
-  width: 44px;
-  height: 44px;
+  position: relative;
+  width: 40px;
+  height: 40px;
   padding: 0;
   color: var(--text);
   background: var(--surface);
@@ -237,6 +245,25 @@ img {
   width: 32px;
   height: 32px;
   border-radius: 10px;
+}
+
+.badge-float {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  color: #1d1300;
+  background: linear-gradient(135deg, #ffe08c, #c79200);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 8px 16px rgba(199, 146, 0, 0.25);
 }
 
 .button:disabled,
@@ -250,10 +277,10 @@ img {
 
 .hero {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 24px;
-  align-items: stretch;
-  margin-top: 4px;
+  grid-template-columns: 1fr minmax(180px, 0.36fr);
+  gap: 12px;
+  align-items: start;
+  margin-top: 8px;
 }
 
 .hero-panel,
@@ -269,9 +296,10 @@ img {
 
 .hero-panel {
   border-radius: var(--radius-xl);
-  padding: 32px;
+  padding: clamp(12px, 1.4vw, 18px);
   position: relative;
   overflow: hidden;
+  min-width: 0;
 }
 
 .hero-panel::after {
@@ -299,14 +327,15 @@ img {
 
 .hero h1,
 .section-title h2 {
-  margin: 16px 0 12px;
+  margin: 10px 0 12px;
   line-height: 1.02;
   letter-spacing: -0.04em;
 }
 
 .hero h1 {
-  font-size: clamp(2.6rem, 6vw, 5.6rem);
-  max-width: 10ch;
+  font-size: clamp(1.55rem, 2.4vw, 2.6rem);
+  max-width: 7.5ch;
+  line-height: 1.02;
 }
 
 .hero p,
@@ -318,20 +347,20 @@ img {
 .hero-actions,
 .row-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
-  margin-top: 24px;
+  margin-top: 14px;
 }
 
 .hero-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 28px;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .metric {
-  padding: 18px;
+  padding: 12px;
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--line);
@@ -345,14 +374,15 @@ img {
 
 .hero-art {
   border-radius: var(--radius-xl);
-  padding: 26px;
+  padding: clamp(10px, 1vw, 14px);
   display: grid;
-  gap: 18px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .hero-art-card {
   border-radius: 24px;
-  min-height: 220px;
+  min-height: 120px;
   background:
     linear-gradient(160deg, rgba(255, 215, 120, 0.2), rgba(255, 255, 255, 0.02)),
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 36%),
@@ -360,7 +390,7 @@ img {
   border: 1px solid var(--line);
   position: relative;
   overflow: hidden;
-  padding: 24px;
+  padding: 12px;
 }
 
 .hero-art-card::after {
@@ -374,7 +404,7 @@ img {
 }
 
 .section {
-  margin-top: 28px;
+  margin-top: 18px;
 }
 
 .section-title {
@@ -382,16 +412,16 @@ img {
   align-items: end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .section-title h2 {
-  font-size: clamp(1.5rem, 2.8vw, 2.3rem);
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
 }
 
 .grid {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .grid-2 {
@@ -403,7 +433,7 @@ img {
 }
 
 .grid-4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .card {
@@ -412,11 +442,11 @@ img {
 }
 
 .card-body {
-  padding: 18px;
+  padding: 10px;
 }
 
 .card-media {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   background: linear-gradient(135deg, rgba(199, 146, 0, 0.2), rgba(255, 255, 255, 0.02));
   overflow: hidden;
 }
@@ -427,13 +457,21 @@ img {
   object-fit: cover;
 }
 
+.product-card .card-media {
+  aspect-ratio: 16 / 9;
+}
+
+.featured-item .card-media {
+  aspect-ratio: 16 / 10;
+}
+
 .card-title {
   margin: 0 0 6px;
-  font-size: 1.05rem;
+  font-size: 0.88rem;
 }
 
 .card-price {
-  font-size: 1.2rem;
+  font-size: 0.92rem;
   font-weight: 800;
 }
 
@@ -442,7 +480,7 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 .badge,
@@ -476,7 +514,7 @@ img {
 
 .panel {
   border-radius: var(--radius-xl);
-  padding: 22px;
+  padding: 14px;
 }
 
 .panel + .panel {
@@ -568,8 +606,9 @@ th {
 
 .admin-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   gap: 18px;
+  align-items: start;
 }
 
 .sidebar {
@@ -578,6 +617,22 @@ th {
   align-self: start;
   display: grid;
   gap: 10px;
+  transition: transform 220ms ease, opacity 220ms ease, width 220ms ease, margin 220ms ease, padding 220ms ease;
+}
+
+.admin-layout--collapsed {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.admin-layout--collapsed .sidebar {
+  transform: translateX(-120%);
+  opacity: 0;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .sidebar-link {
@@ -602,14 +657,29 @@ th {
 
 .featured-track {
   display: flex;
-  gap: 18px;
+  gap: 10px;
   width: max-content;
   animation: marquee 34s linear infinite;
 }
 
 .featured-item {
-  flex: 0 0 360px;
-  width: 360px;
+  flex: 0 0 clamp(140px, 13vw, 180px);
+  width: clamp(140px, 13vw, 180px);
+}
+
+.category-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+}
+
+.category-card {
+  flex: 0 0 clamp(180px, 20vw, 240px);
+  width: clamp(180px, 20vw, 240px);
+  scroll-snap-align: start;
 }
 
 .featured-item .card {
@@ -840,8 +910,16 @@ th {
 }
 
 @media (max-width: 960px) {
+  :root {
+    --header-space: 180px;
+  }
+
   .hero,
   .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-layout--collapsed {
     grid-template-columns: 1fr;
   }
 
@@ -858,26 +936,40 @@ th {
   .hero h1 {
     max-width: 100%;
   }
+
 }
 
 @media (max-width: 640px) {
+  :root {
+    --header-space: 214px;
+  }
+
   .topbar-inner,
   .footer-inner {
-    padding: 14px;
+    padding: 12px 14px;
   }
 
   .main-shell {
-    padding: 108px 14px 56px;
+    padding: var(--header-space) 12px 56px;
   }
 
   .hero-panel,
   .hero-art,
   .panel {
-    padding: 18px;
+    padding: 14px;
   }
 
   .featured-item {
-    flex-basis: 290px;
-    width: 290px;
+    flex-basis: 140px;
+    width: 140px;
+  }
+
+  .topbar-inner {
+    padding-inline: 12px;
+    gap: 10px;
+  }
+
+  .nav-links {
+    gap: 8px;
   }
 }

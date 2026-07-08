@@ -1,9 +1,23 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Boxes, CreditCard, LogIn, PackageSearch, Receipt, Shield, Tags, Users } from "lucide-react";
+import {
+  ArrowLeftFromLine,
+  ArrowRightToLine,
+  BarChart3,
+  Boxes,
+  CreditCard,
+  LogIn,
+  LogOut,
+  PackageSearch,
+  Receipt,
+  Shield,
+  Tags,
+  Users,
+} from "lucide-react";
 import { useGoldenStore } from "@/lib/store";
 
 const menu = [
@@ -27,7 +41,27 @@ export function AdminShell({
   action?: ReactNode;
 }) {
   const pathname = usePathname();
-  const { adminSession } = useGoldenStore();
+  const { adminSession, logoutAdmin } = useGoldenStore();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const headerActions = useMemo(
+    () =>
+      adminSession ? (
+        <div className="nav-links">
+          <button className="button-outline" type="button" onClick={() => setSidebarCollapsed((current) => !current)}>
+            {sidebarCollapsed ? <ArrowRightToLine size={16} /> : <ArrowLeftFromLine size={16} />}
+            {sidebarCollapsed ? "Tampilkan Sidebar" : "Sembunyikan Sidebar"}
+          </button>
+          <button className="button-outline" type="button" onClick={logoutAdmin}>
+            <LogOut size={16} />
+            Logout
+          </button>
+          {action}
+        </div>
+      ) : (
+        action
+      ),
+    [action, adminSession, logoutAdmin, sidebarCollapsed],
+  );
 
   if (!adminSession) {
     return (
@@ -47,8 +81,8 @@ export function AdminShell({
             Login Admin
           </Link>
         </div>
-      </section>
-    );
+    </section>
+  );
   }
 
   return (
@@ -62,10 +96,10 @@ export function AdminShell({
           <h2>{title}</h2>
           <div className="section-copy">{description}</div>
         </div>
-        {action ? <div>{action}</div> : null}
+        {headerActions ? <div>{headerActions}</div> : null}
       </div>
 
-      <div className="admin-layout">
+      <div className={`admin-layout ${sidebarCollapsed ? "admin-layout--collapsed" : ""}`}>
         <aside className="sidebar panel">
           <div className="stack">
             <div>
