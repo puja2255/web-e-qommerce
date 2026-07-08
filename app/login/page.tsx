@@ -1,23 +1,17 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LockKeyhole, UserRound } from "lucide-react";
 import { useGoldenStore } from "@/lib/store";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginAdmin, adminSession } = useGoldenStore();
+  const { loginAdmin } = useGoldenStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (adminSession) {
-      router.push("/admin");
-    }
-  }, [adminSession, router]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

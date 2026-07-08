@@ -19,7 +19,6 @@ import { makeOrderNumber, slugify } from "@/lib/utils";
 const SESSION_KEYS = {
   theme: "golden-store-theme-v1",
   cart: "golden-store-cart-v1",
-  adminSession: "golden-store-admin-v1",
 };
 const ADMIN_EMAIL = "admin@goldenstore.id";
 const ADMIN_PASSWORD = "Golden123!";
@@ -115,13 +114,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           fetchBootstrapState(),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.theme)),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.cart)),
-          Promise.resolve(window.localStorage.getItem(SESSION_KEYS.adminSession)),
+          Promise.resolve(null),
         ]);
 
         const sessionState: SessionStorageState = {
           theme: (storedTheme as ThemeMode | null) ?? seedState.theme,
           cart: storedCart ? (JSON.parse(storedCart) as CartItem[]) : seedState.cart,
-          adminSession: storedAdmin ? (JSON.parse(storedAdmin) as AppState["adminSession"]) : seedState.adminSession,
+          adminSession: storedAdmin ? (JSON.parse(storedAdmin) as AppState["adminSession"]) : null,
         };
 
         setState({
@@ -145,11 +144,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     window.localStorage.setItem(SESSION_KEYS.theme, state.theme);
     window.localStorage.setItem(SESSION_KEYS.cart, JSON.stringify(state.cart));
-    if (state.adminSession) {
-      window.localStorage.setItem(SESSION_KEYS.adminSession, JSON.stringify(state.adminSession));
-    } else {
-      window.localStorage.removeItem(SESSION_KEYS.adminSession);
-    }
     document.documentElement.dataset.theme = state.theme;
   }, [hydrated, state]);
 

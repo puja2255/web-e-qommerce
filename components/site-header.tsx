@@ -69,19 +69,19 @@ export function SiteHeader() {
           </nav>
 
           <div className="nav-links">
-            <Link href="/cart" className="button-ghost">
-              <ShoppingBag size={16} />
-              Keranjang
-              <span className="badge-soft">{cart.length}</span>
+            <Link href="/cart" className="button-icon" aria-label="Keranjang" title="Keranjang">
+              <ShoppingBag size={18} />
+              <span className="badge-float">{cart.length}</span>
             </Link>
             <a
-              className="button-outline"
+              className="button-icon"
               href={adminWhatsappLink("Halo admin Golden Store, saya ingin bertanya tentang produk.")}
               target="_blank"
               rel="noreferrer"
+              aria-label="Tanya WA admin"
+              title="Tanya WA admin"
             >
-              <MessageCircleMore size={16} />
-              Tanya WA
+              <MessageCircleMore size={18} />
             </a>
             <ThemeToggle />
           </div>

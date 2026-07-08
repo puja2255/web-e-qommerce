@@ -70,9 +70,9 @@ export default function HomePage() {
             <h2>Produk terstruktur per kategori</h2>
           </div>
         </div>
-        <div className="grid grid-4">
+        <div className="category-strip">
           {activeCategories.map((category) => (
-            <div key={category.id} className="panel">
+            <div key={category.id} className="panel category-card">
               <span className="badge">{category.name}</span>
               <p className="muted" style={{ marginBottom: 0 }}>
                 {category.description}
