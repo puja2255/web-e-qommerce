@@ -7,7 +7,7 @@ import "@/app/globals.css";
 
 export const metadata: Metadata = {
   title: "Golden Store",
-  description: "E-commerce premium bertema emas untuk produk pilihan terbaik.",
+  description: "E-commerce untuk produk pilihan terbaik.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -51,7 +51,7 @@ export function SiteHeader() {
             <span>
               Golden Store
               <span className="tiny muted" style={{ display: "block" }}>
-                E-commerce premium emas
+                E-commerce terpercaya untuk produk terbaik
               </span>
             </span>
           </Link>
@@ -69,10 +69,10 @@ export function SiteHeader() {
           </nav>
 
           <div className="nav-links">
-            <Link href="/cart" className="button-icon" aria-label="Keranjang" title="Keranjang">
+            {/* <Link href="/cart" className="button-icon" aria-label="Keranjang" title="Keranjang">
               <ShoppingBag size={18} />
               <span className="badge-float">{cart.length}</span>
-            </Link>
+            </Link> */}
             <a
               className="button-icon"
               href={adminWhatsappLink("Halo admin Golden Store, saya ingin bertanya tentang produk.")}
