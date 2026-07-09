@@ -18,12 +18,12 @@ export default function HomePage() {
         <div className="hero-panel">
           <div className="eyebrow">
             <Sparkles size={14} />
-            Golden Store premium marketplace
+            Golden Store
           </div>
-          <h1>Belanja terasa mewah, cepat, dan rapi dalam satu tempat.</h1>
+          <h1>Belanja mudah, cepat, dan aman dalam satu tempat.</h1>
           <p>
-            Golden Store adalah e-commerce bernuansa kuning emas dengan katalog produk, keranjang belanja, checkout,
-            pembayaran COD/DANA/bank, serta dashboard admin untuk pengelolaan toko.
+            Golden Store adalah e-commerce katalog lengkap dengan harga terbaik. temukan produk yang dibutuhkan tanpa ribet.
+            Belanja sekarang dan rasakan pengalaman berbelanja yang menyenangkan!
           </p>
           <div className="hero-actions">
             <Link href="/products" className="button">
@@ -44,18 +44,17 @@ export default function HomePage() {
 
         <div className="hero-art panel">
           <div className="hero-art-card">
-            <div className="eyebrow">
+            {/* <div className="eyebrow">
               <Store size={14} />
               Tema {theme === "dark" ? "gelap" : "terang"}
-            </div>
-            <h3 style={{ fontSize: "1.8rem", marginTop: 18, marginBottom: 8 }}>Nuansa emas yang premium</h3>
+            </div> */}
+            <h3 style={{ fontSize: "1.8rem", marginTop: 18, marginBottom: 8 }}>Belanja jadi lebih praktis.</h3>
             <p className="muted">
-              Desain dibuat supaya tetap tegas saat gelap dan tetap hangat saat terang. Cocok untuk brand yang ingin
-              terlihat eksklusif.
+              Semua dibuat agar pelanggan mudah menemukan produk yang diinginkan dan langsung bertransaksi tanpa hambatan.
             </p>
           </div>
           <div className="muted-box">
-            Pembeli bisa menghubungi admin langsung via WhatsApp untuk tanya stok, detail produk, atau bantuan order.
+            Anda bisa menghubungi admin langsung via WhatsApp untuk tanya stok, detail produk, atau bantuan order.
           </div>
         </div>
       </section>
@@ -109,7 +108,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="section-copy tiny" style={{ marginTop: 10 }}>
-          Gulir produk unggulan otomatis ke samping untuk menampilkan lebih banyak pilihan.
+          Temukan produk unggulan kami dengan kualitas terbaik dan harga yang kompetitif.
         </div>
       </section>
     </div>

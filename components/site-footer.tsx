@@ -7,7 +7,7 @@ export function SiteFooter() {
         <div className="footer-inner">
           <div>
             <strong>Golden Store</strong>
-            <div className="tiny muted">Nuansa kuning emas, terasa premium di terang maupun gelap.</div>
+            <div className="tiny muted">Temukan produk terbaik untuk kebutuhan Anda.</div>
           </div>
           <div className="nav-links">
             <Link href="/products" className="nav-link">
