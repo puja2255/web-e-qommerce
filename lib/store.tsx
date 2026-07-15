@@ -7,6 +7,8 @@ import {
   AppState,
   CartItem,
   Category,
+  CustomerAddress,
+  CustomerSession,
   Order,
   OrderItem,
   OrderStatus,
@@ -19,6 +21,8 @@ import { makeOrderNumber, slugify } from "@/lib/utils";
 const SESSION_KEYS = {
   theme: "golden-store-theme-v1",
   cart: "golden-store-cart-v1",
+  customer: "golden-store-customer-v1",
+  addresses: "golden-store-addresses-v1",
 };
 const ADMIN_EMAIL = "admin@goldenstore.id";
 const ADMIN_PASSWORD = "Golden123!";
@@ -62,14 +66,26 @@ export interface CheckoutPayload {
   notes: string;
   paymentMethodId: string;
   paymentProofUrl?: string;
+  customerId?: string;
+  shippingFee: number;
+  paymentDueAt?: string;
 }
 
 interface StoreContextValue extends AppState {
   hydrated: boolean;
+  customerSession: CustomerSession | null;
+  customerAddresses: CustomerAddress[];
+  cartNotice: string | null;
   toggleTheme: () => void;
   loginAdmin: (email: string, password: string) => boolean;
   logoutAdmin: () => void;
   addToCart: (productId: string, quantity?: number) => void;
+  dismissCartNotice: () => void;
+  registerCustomer: (data: Omit<CustomerSession, "id">) => void;
+  loginCustomer: (email: string) => boolean;
+  logoutCustomer: () => void;
+  saveCustomerAddress: (address: Omit<CustomerAddress, "id">) => void;
+  deleteCustomerAddress: (addressId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
@@ -105,16 +121,21 @@ async function fetchBootstrapState() {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(seedState);
+  const [customerSession, setCustomerSession] = useState<CustomerSession | null>(null);
+  const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
+  const [cartNotice, setCartNotice] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [bootstrapState, storedTheme, storedCart, storedAdmin] = await Promise.all([
+        const [bootstrapState, storedTheme, storedCart, storedAdmin, storedCustomer, storedAddresses] = await Promise.all([
           fetchBootstrapState(),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.theme)),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.cart)),
           Promise.resolve(null),
+          Promise.resolve(window.localStorage.getItem(SESSION_KEYS.customer)),
+          Promise.resolve(window.localStorage.getItem(SESSION_KEYS.addresses)),
         ]);
 
         const sessionState: SessionStorageState = {
@@ -128,6 +149,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...bootstrapState,
           ...sessionState,
         });
+        setCustomerSession(storedCustomer ? (JSON.parse(storedCustomer) as CustomerSession) : null);
+        setCustomerAddresses(storedAddresses ? (JSON.parse(storedAddresses) as CustomerAddress[]) : []);
       } catch {
         setState(seedState);
       } finally {
@@ -144,8 +167,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     window.localStorage.setItem(SESSION_KEYS.theme, state.theme);
     window.localStorage.setItem(SESSION_KEYS.cart, JSON.stringify(state.cart));
+    window.localStorage.setItem(SESSION_KEYS.customer, JSON.stringify(customerSession));
+    window.localStorage.setItem(SESSION_KEYS.addresses, JSON.stringify(customerAddresses));
     document.documentElement.dataset.theme = state.theme;
-  }, [hydrated, state]);
+  }, [hydrated, state, customerSession, customerAddresses]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = state.theme;
@@ -235,6 +260,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         cart: nextCart,
       };
     });
+    const product = state.products.find((item) => item.id === productId);
+    if (product) {
+      setCartNotice(`${product.name} ditambahkan ke keranjang.`);
+    }
+  };
+
+  const dismissCartNotice = () => setCartNotice(null);
+
+  const registerCustomer = (data: Omit<CustomerSession, "id">) => {
+    setCustomerSession({ id: `customer-${Date.now()}`, ...data });
+  };
+
+  const loginCustomer = (email: string) => {
+    if (customerSession?.email.toLowerCase() === email.trim().toLowerCase()) return true;
+    return false;
+  };
+
+  const logoutCustomer = () => setCustomerSession(null);
+
+  const saveCustomerAddress = (address: Omit<CustomerAddress, "id">) => {
+    setCustomerAddresses((current) => {
+      const next = { ...address, id: `address-${Date.now()}` };
+      return address.isPrimary ? [next, ...current.map((item) => ({ ...item, isPrimary: false }))] : [...current, next];
+    });
+  };
+
+  const deleteCustomerAddress = (addressId: string) => {
+    setCustomerAddresses((current) => current.filter((item) => item.id !== addressId));
   };
 
   const updateCartQuantity = (productId: string, quantity: number) => {
@@ -298,7 +351,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       image: item.image,
     }));
 
-    const shippingFee = 25000;
+    const shippingFee = payload.shippingFee;
     const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
     const totalAmount = subtotal + shippingFee;
     const nextOrderNumber = makeOrderNumber(state.orders.length + 1);
@@ -318,6 +371,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       totalAmount,
       shippingFee,
       adminNote: "",
+      customerId: payload.customerId,
+      paymentDueAt: payload.paymentDueAt,
       items,
       createdAt,
     };
@@ -679,6 +734,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     loginAdmin,
     logoutAdmin,
     addToCart,
+    dismissCartNotice,
+    registerCustomer,
+    loginCustomer,
+    logoutCustomer,
+    saveCustomerAddress,
+    deleteCustomerAddress,
+    customerSession,
+    customerAddresses,
+    cartNotice,
     updateCartQuantity,
     removeFromCart,
     clearCart,

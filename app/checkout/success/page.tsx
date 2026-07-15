@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { CheckCircle2, MessageCircle, ShoppingBag } from "lucide-react";
 import { useGoldenStore } from "@/lib/store";
 import { formatCurrency, shortDate, whatsappLink } from "@/lib/utils";
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
   const { orders } = useGoldenStore();
   const orderId = searchParams.get("order");
@@ -60,5 +61,19 @@ export default function CheckoutSuccessPage() {
         </a>
       </div>
     </section>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="panel">
+          <p className="muted">Memuat detail pesanan...</p>
+        </section>
+      }
+    >
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }

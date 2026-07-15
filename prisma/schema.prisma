@@ -88,6 +88,7 @@ model Product {
   reviewsCount  Int            @default(0)
   images        ProductImage[]
   orderItems    OrderItem[]
+  reviews       Review[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -119,6 +120,7 @@ model Order {
   adminNote        String?
   customerId       String?
   customer         User?         @relation(fields: [customerId], references: [id])
+  paymentDueAt     DateTime?
   items            OrderItem[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
@@ -135,4 +137,20 @@ model OrderItem {
   quantity     Int
   subtotal     Int
   imageUrl     String
+  review       Review?
+}
+
+model Review {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItemId String    @unique
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  customerName String
+  rating      Int
+  comment     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([productId, createdAt])
 }
