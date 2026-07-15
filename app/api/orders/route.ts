@@ -16,6 +16,9 @@ export async function POST(request: Request) {
     notes: body.notes ?? "",
     paymentMethodId: body.paymentMethodId,
     paymentProofUrl: body.paymentProofUrl ?? undefined,
+    customerId: body.customerId ?? undefined,
+    shippingFee: body.shippingFee ?? undefined,
+    paymentDueAt: body.paymentDueAt ?? undefined,
     items: Array.isArray(body.items) ? body.items : [],
   });
 

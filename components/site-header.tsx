@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { MessageCircleMore, ShoppingBag, Store } from "lucide-react";
+import { Bell, MapPin, MessageCircleMore, ShoppingBag, Store, UserRound, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { adminWhatsappLink } from "@/lib/contact";
@@ -13,11 +13,12 @@ const links = [
   { href: "/products", label: "Produk" },
   { href: "/cart", label: "Keranjang" },
   { href: "/checkout", label: "Checkout" },
+  { href: "/account", label: "Akun Saya" },
 ];
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { cart } = useGoldenStore();
+  const { cart, cartNotice, dismissCartNotice, customerSession } = useGoldenStore();
   const [hidden, setHidden] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -69,10 +70,13 @@ export function SiteHeader() {
           </nav>
 
           <div className="nav-links">
-            {/* <Link href="/cart" className="button-icon" aria-label="Keranjang" title="Keranjang">
+            <Link href="/cart" className="button-icon" aria-label="Keranjang" title="Keranjang">
               <ShoppingBag size={18} />
               <span className="badge-float">{cart.length}</span>
-            </Link> */}
+            </Link>
+            <Link href="/account" className="button-icon" aria-label="Akun pembeli" title={customerSession ? customerSession.name : "Masuk atau daftar"}>
+              <UserRound size={18} />
+            </Link>
             <a
               className="button-icon"
               href={adminWhatsappLink("Halo admin Golden Store, saya ingin bertanya tentang produk.")}
@@ -87,6 +91,21 @@ export function SiteHeader() {
           </div>
         </div>
       </div>
+      <div className="commerce-banner">
+        <div className="site-shell commerce-banner__inner">
+          <span><Bell size={14} /> Gratis ongkir mulai Rp300.000</span>
+          <span><MapPin size={14} /> Ongkir dihitung sesuai alamat tujuan</span>
+          <span>Bayar transfer dalam 24 jam</span>
+        </div>
+      </div>
+      {cartNotice ? (
+        <div className="cart-toast" role="status">
+          <ShoppingBag size={18} />
+          <span>{cartNotice}</span>
+          <Link href="/cart">Lihat</Link>
+          <button type="button" onClick={dismissCartNotice} aria-label="Tutup notifikasi"><X size={16} /></button>
+        </div>
+      ) : null}
     </header>
   );
 }

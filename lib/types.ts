@@ -39,6 +39,15 @@ export interface Product {
   reviewsCount: number;
 }
 
+export interface Review {
+  id: string;
+  productId: string;
+  customerName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 export interface CartItem {
   productId: string;
   name: string;
@@ -73,8 +82,29 @@ export interface Order {
   totalAmount: number;
   shippingFee: number;
   adminNote: string;
+  customerId?: string;
+  paymentDueAt?: string;
   items: OrderItem[];
   createdAt: string;
+}
+
+export interface CustomerSession {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export interface CustomerAddress {
+  id: string;
+  label: string;
+  recipientName: string;
+  phone: string;
+  province: string;
+  city: string;
+  district: string;
+  detail: string;
+  isPrimary: boolean;
 }
 
 export interface DashboardSeriesPoint {

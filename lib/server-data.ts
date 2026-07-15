@@ -109,6 +109,8 @@ function mapOrder(order: {
   totalAmount: number;
   shippingFee: number;
   adminNote: string | null;
+  customerId: string | null;
+  paymentDueAt: Date | null;
   createdAt: Date;
   items: Array<{
     productId: string;
@@ -134,6 +136,8 @@ function mapOrder(order: {
     totalAmount: order.totalAmount,
     shippingFee: order.shippingFee,
     adminNote: order.adminNote ?? "",
+    customerId: order.customerId ?? undefined,
+    paymentDueAt: order.paymentDueAt?.toISOString(),
     items: order.items.map((item) => ({
       productId: item.productId,
       productName: item.productName,
@@ -382,6 +386,9 @@ export async function createOrderRecord(data: {
   notes: string;
   paymentMethodId: string;
   paymentProofUrl?: string;
+  customerId?: string;
+  shippingFee?: number;
+  paymentDueAt?: string;
   items: Array<{
     productId: string;
     productName: string;
@@ -393,7 +400,7 @@ export async function createOrderRecord(data: {
 }) {
   const nextCount = await prisma.order.count();
   const orderNumber = `GS-${String(nextCount + 1).padStart(5, "0")}`;
-  const shippingFee = 25000;
+  const shippingFee = Math.max(0, Number(data.shippingFee) || 25000);
   const totalAmount = data.items.reduce((sum, item) => sum + item.subtotal, 0) + shippingFee;
   const paymentMethod = await prisma.paymentMethod.findUnique({
     where: { id: data.paymentMethodId },
@@ -409,10 +416,12 @@ export async function createOrderRecord(data: {
       notes: data.notes,
       paymentMethodId: data.paymentMethodId,
       paymentProofUrl: data.paymentProofUrl,
+      customerId: data.customerId || undefined,
+      paymentDueAt: data.paymentDueAt ? new Date(data.paymentDueAt) : undefined,
       totalAmount,
       shippingFee,
       status: "PENDING",
-      paymentStatus: paymentMethod?.type === "COD" ? "UNPAID" : "PAID",
+      paymentStatus: "UNPAID",
       items: {
         create: data.items.map((item) => ({
           productId: item.productId,
