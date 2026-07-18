@@ -13,6 +13,7 @@ const links = [
   { href: "/products", label: "Produk" },
   { href: "/cart", label: "Keranjang" },
   { href: "/checkout", label: "Checkout" },
+  { href: "/account#alamat", label: "Alamat" },
   { href: "/account", label: "Akun Saya" },
 ];
 

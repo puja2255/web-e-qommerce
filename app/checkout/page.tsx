@@ -3,15 +3,16 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileUp, Send, ImagePlus, X } from "lucide-react";
+import { FileUp, Send, ImagePlus, MapPin, Truck, X } from "lucide-react";
 import { useGoldenStore } from "@/lib/store";
 import { formatCurrency, calcCartSubtotal } from "@/lib/utils";
+import { distanceInKm, shippingQuote, warehouseLocation } from "@/lib/address-service";
 
 const MAX_PROOF_SIZE = 3 * 1024 * 1024;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, paymentMethods, createOrder } = useGoldenStore();
+  const { cart, paymentMethods, createOrder, customerAddresses, customerSession } = useGoldenStore();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
@@ -23,10 +24,15 @@ export default function CheckoutPage() {
   const [paymentProofError, setPaymentProofError] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [courier, setCourier] = useState<"JNE" | "J&T" | "SICEPAT">("JNE");
 
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
   const subtotal = calcCartSubtotal(cart);
-  const shippingFee = cart.length > 0 ? 25000 : 0;
+  const recipientAddresses = customerAddresses.filter((address) => (address.type ?? "RECIPIENT") === "RECIPIENT");
+  const selectedAddress = recipientAddresses.find((address) => address.id === selectedAddressId) ?? recipientAddresses.find((address) => address.isPrimary);
+  const distance = selectedAddress?.latitude != null && selectedAddress?.longitude != null ? distanceInKm(warehouseLocation, selectedAddress) : null;
+  const shippingFee = cart.length > 0 ? (distance !== null ? shippingQuote(distance, courier) : 25000) : 0;
   const total = subtotal + shippingFee;
   const proofRequired = selectedPayment?.type !== "COD";
 
@@ -80,6 +86,8 @@ export default function CheckoutPage() {
       notes,
       paymentMethodId,
       paymentProofUrl,
+      customerId: customerSession?.id,
+      shippingFee,
     });
     setLoading(false);
 
@@ -103,6 +111,7 @@ export default function CheckoutPage() {
       </p>
 
       <form className="stack" onSubmit={handleSubmit}>
+        {recipientAddresses.length ? <div className="address-checkout"><div className="eyebrow"><MapPin size={14} /> Alamat tersimpan</div><select className="select" value={selectedAddress?.id ?? ""} onChange={(event) => { const address = recipientAddresses.find((item) => item.id === event.target.value); setSelectedAddressId(event.target.value); if (address) { setCustomerName(address.recipientName); setCustomerPhone(address.phone); setCustomerAddress(`${address.detail}, ${address.district}, ${address.city}, ${address.province} ${address.postalCode ?? ""}`); setMapsLink(address.mapsUrl ?? ""); } }}><option value="">Pilih alamat penerima</option>{recipientAddresses.map((address) => <option key={address.id} value={address.id}>{address.label}{address.isPrimary ? " (Utama)" : ""} — {address.city}</option>)}</select>{selectedAddress ? <div className="muted tiny">{selectedAddress.isVerified ? "Wilayah terverifikasi" : "Alamat belum diverifikasi"}{distance !== null ? ` · Jarak estimasi ${distance} km` : " · Gunakan GPS di halaman Akun untuk ongkir berbasis jarak"}</div> : null}</div> : null}
         <div className="field-grid">
           <div className="field">
             <label>Nama</label>
@@ -113,6 +122,8 @@ export default function CheckoutPage() {
             <input className="input" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="0812..." />
           </div>
         </div>
+
+        <div className="field-grid"><div className="field"><label><Truck size={14} /> Kurir</label><select className="select" value={courier} onChange={(event) => setCourier(event.target.value as typeof courier)}><option value="JNE">JNE Reguler</option><option value="J&T">J&T EZ</option><option value="SICEPAT">SiCepat BEST</option></select></div><div className="field"><label>Estimasi ongkir</label><div className="shipping-quote">{formatCurrency(shippingFee)}<span>{distance !== null ? `${courier} · ${distance} km` : `${courier} · estimasi wilayah`}</span></div></div></div>
 
         <div className="field">
           <label>Alamat</label>
