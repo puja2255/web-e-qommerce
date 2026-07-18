@@ -966,6 +966,27 @@ th {
 .order-timeline span.active { color: #1b1300; background: var(--gold); font-weight: 800; }
 .payment-deadline { color: var(--danger); font-weight: 800; }
 
+.address-system { display: grid; gap: 12px; }
+.address-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.address-tab { border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 8px 10px; border-radius: 9px; cursor: pointer; font: inherit; font-size: .84rem; }
+.address-tab.active { background: var(--gold); border-color: var(--gold); color: #1b1300; font-weight: 800; }
+.address-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; gap: 12px; justify-content: space-between; }
+.verify-chip, .maps-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; margin-right: 8px; font-size: .75rem; font-weight: 700; }
+.verify-chip { color: var(--muted); }
+.verify-chip.verified { color: var(--success); }
+.maps-link { color: var(--gold-dark); text-decoration: none; }
+.address-suggestions { position: absolute; z-index: 5; left: 0; right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--shadow); overflow: hidden; }
+.field:has(.address-suggestions) { position: relative; }
+.address-suggestions button { display: flex; width: 100%; align-items: center; gap: 7px; padding: 9px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; font-size: .82rem; }
+.address-suggestions button:hover { background: var(--surface-soft); }
+.location-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.location-status { display: inline-flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--muted); }
+.location-status.ready { color: var(--success); }
+.address-map { width: 100%; height: 220px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); }
+.address-checkout { display: grid; gap: 8px; padding: 12px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 10px; }
+.shipping-quote { display: grid; min-height: 42px; align-content: center; font-weight: 800; }
+.shipping-quote span { font-size: .76rem; color: var(--muted); font-weight: 500; }
+
 .review-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);

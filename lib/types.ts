@@ -97,6 +97,7 @@ export interface CustomerSession {
 
 export interface CustomerAddress {
   id: string;
+  type?: "RECIPIENT" | "STORE" | "RETURN";
   label: string;
   recipientName: string;
   phone: string;
@@ -105,6 +106,11 @@ export interface CustomerAddress {
   district: string;
   detail: string;
   isPrimary: boolean;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+  mapsUrl?: string;
+  isVerified?: boolean;
 }
 
 export interface DashboardSeriesPoint {
