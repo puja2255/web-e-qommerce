@@ -1,0 +1,85 @@
+
+
+**Panduan menjalankan di laptop ini**
+1. Pastikan terpasang:
+   - Node.js versi LTS
+   - npm
+   - PostgreSQL
+2. Buka folder project:
+   - `D:\kuliah\semester 6\magang\projek 2`
+3. Install dependency:
+```powershell
+npm install
+```
+4. Kalau mau pakai PostgreSQL, buat file `.env` dari `.env.example` lalu isi `DATABASE_URL`.
+   - Contoh ada di [.env.example](/D:/kuliah/semester%206/magang/projek%202/.env.example)
+5. Buat database di PostgreSQL, misalnya:
+   - nama database: `golden_store`
+6. Generate Prisma Client:
+```powershell
+npx prisma generate
+```
+7. Jalankan migrasi pertama:
+```powershell
+npx prisma migrate dev --name init
+```
+8. Jalankan seed data:
+```powershell
+npx prisma db seed
+```
+9. Jalankan project:
+```powershell
+npm run dev
+```
+10. Buka di browser:
+   - `http://localhost:3000`
+
+**Login admin demo**
+- Email: `admin@goldenstore.id`
+- Password: `Golden123!`
+
+**Kalau mau dijalankan di laptop lain**
+1. Pindahkan project dengan salah satu cara:
+   - Copy folder project
+   - Atau clone dari Git kalau nanti sudah di-upload ke repo
+2. Di laptop baru, install:
+   - Node.js LTS
+   - PostgreSQL
+3. Buka folder project.
+4. Jalankan:
+```powershell
+npm install
+```
+5. Buat file `.env` dan isi `DATABASE_URL`.
+6. Jalankan:
+```powershell
+npx prisma generate
+npx prisma migrate dev --name init
+npx prisma db seed
+npm run dev
+```
+7. Buka `http://localhost:3000`
+
+**Kalau kamu cuma ingin demo UI tanpa database dulu**
+- Biasanya cukup:
+```powershell
+npm install
+npm run dev
+```
+- Tetapi untuk fitur Prisma/PostgreSQL, langkah database tetap perlu dijalankan.
+
+**Fitur yang sudah ada di project**
+- Beranda
+- Daftar produk
+- Detail produk
+- Keranjang belanja
+- Checkout
+- Upload bukti transfer untuk metode non-COD
+- Login admin
+- Dashboard admin
+- CRUD produk
+- CRUD kategori
+- CRUD pembayaran
+- Manajemen pesanan
+- Laporan penjualan
+- Export CSV dan print PDF
