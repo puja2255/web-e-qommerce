@@ -8,6 +8,8 @@ import { useGoldenStore } from "@/lib/store";
 import { formatCurrency, calcCartSubtotal } from "@/lib/utils";
 import { distanceInKm, shippingQuote, warehouseLocation } from "@/lib/address-service";
 
+import { useEffect } from "react";
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, paymentMethods, createOrder, customerAddresses, customerSession } = useGoldenStore();
@@ -26,9 +28,20 @@ export default function CheckoutPage() {
   const subtotal = calcCartSubtotal(cart);
   const recipientAddresses = customerAddresses.filter((address) => (address.type ?? "RECIPIENT") === "RECIPIENT");
   const selectedAddress = recipientAddresses.find((address) => address.id === selectedAddressId) ?? recipientAddresses.find((address) => address.isPrimary);
-  const distance = selectedAddress?.latitude != null && selectedAddress?.longitude != null ? distanceInKm(warehouseLocation, selectedAddress) : null;
+  const addressCoordinates = selectedAddress?.latitude != null && selectedAddress?.longitude != null
+    ? { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude }
+    : null;
+  const distance = addressCoordinates ? distanceInKm(warehouseLocation, addressCoordinates) : null;
   const shippingFee = cart.length > 0 ? (distance !== null ? shippingQuote(distance, courier) : 25000) : 0;
   const total = subtotal + shippingFee;
+
+  useEffect(() => {
+    if (paymentMethods.some((method) => method.id === paymentMethodId)) {
+      return;
+    }
+
+    setPaymentMethodId(paymentMethods.find((method) => method.isActive)?.id ?? "");
+  }, [paymentMethodId, paymentMethods]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
