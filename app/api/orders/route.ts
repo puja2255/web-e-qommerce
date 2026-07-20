@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createOrderRecord, getBootstrapState } from "@/lib/server-data";
+import { getCustomerSession } from "@/lib/customer-auth";
 
 export async function GET() {
   const state = await getBootstrapState();
@@ -36,6 +37,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const customer = getCustomerSession();
+    if (!customer) return NextResponse.json({ message: "Silakan masuk terlebih dahulu untuk checkout." }, { status: 401 });
     const order = await createOrderRecord({
       customerName: body.customerName.trim(),
       customerPhone: body.customerPhone.trim(),
@@ -44,7 +47,7 @@ export async function POST(request: Request) {
       notes: typeof body.notes === "string" ? body.notes : "",
       paymentMethodId: body.paymentMethodId,
       paymentProofUrl: typeof body.paymentProofUrl === "string" ? body.paymentProofUrl : undefined,
-      customerId: typeof body.customerId === "string" ? body.customerId : undefined,
+      customerId: customer.id,
       shippingFee: typeof body.shippingFee === "number" ? body.shippingFee : undefined,
       paymentDueAt: typeof body.paymentDueAt === "string" ? body.paymentDueAt : undefined,
       items: body.items,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, MessageSquareText, ShoppingCart, Sparkles, Star } from "lucide-react";
 import { useGoldenStore } from "@/lib/store";
@@ -24,7 +24,8 @@ async function readApiJson<T>(response: Response): Promise<T> {
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = typeof params.slug === "string" ? params.slug : params.slug?.[0];
-  const { products, categories, addToCart } = useGoldenStore();
+  const router = useRouter();
+  const { products, categories, addToCart, customerSession } = useGoldenStore();
   const product = products.find((item) => item.slug === slug);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewSummary, setReviewSummary] = useState({ rating: product?.rating ?? 0, reviewsCount: product?.reviewsCount ?? 0 });
@@ -67,6 +68,7 @@ export default function ProductDetailPage() {
   async function submitReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!product) return;
+    if (!customerSession) { router.push(`/account?next=/products/${product.slug}`); return; }
 
     setIsSubmitting(true);
     setFeedback("");
@@ -212,6 +214,7 @@ export default function ProductDetailPage() {
         <form className="panel review-form" onSubmit={submitReview}>
           <div className="eyebrow">Beri ulasan</div>
           <h2>Bagikan pengalamanmu</h2>
+          {!customerSession ? <p className="muted">Silakan masuk terlebih dahulu untuk memberi ulasan.</p> : null}
           <div className="field">
             <label>Rating</label>
             <div className="rating-picker" aria-label="Pilih rating">

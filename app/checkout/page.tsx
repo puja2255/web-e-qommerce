@@ -43,10 +43,15 @@ export default function CheckoutPage() {
     setPaymentMethodId(paymentMethods.find((method) => method.isActive)?.id ?? "");
   }, [paymentMethodId, paymentMethods]);
 
+  useEffect(() => {
+    if (!customerSession) router.replace("/account?next=/checkout");
+  }, [customerSession, router]);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
 
+    if (!customerSession) { router.push("/account?next=/checkout"); return; }
     if (cart.length === 0) {
       setError("Keranjang masih kosong.");
       return;
