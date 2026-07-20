@@ -1125,6 +1125,11 @@ th {
   color: var(--success);
 }
 
+.auth-switch { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border: 1px solid var(--line); background: var(--surface-soft); border-radius: 10px; margin: 18px 0; }
+.auth-switch button { border: 0; background: transparent; color: var(--muted); border-radius: 7px; padding: 9px; font: inherit; font-weight: 700; cursor: pointer; }
+.auth-switch button.active { color: var(--text); background: var(--surface); box-shadow: var(--shadow); }
+.google-button { display: inline-flex; justify-content: center; gap: 10px; text-decoration: none; }
+
 @media (max-width: 960px) {
   :root {
     --header-space: 180px;

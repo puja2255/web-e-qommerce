@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCustomerSession } from "@/lib/customer-auth";
 
 function serializeReview(review: {
   id: string;
@@ -25,6 +26,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 }
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
+  const customer = getCustomerSession();
+  if (!customer) return NextResponse.json({ message: "Silakan masuk terlebih dahulu untuk memberi ulasan." }, { status: 401 });
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -47,6 +50,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       order: {
         orderNumber,
         status: "COMPLETED",
+        customerId: customer.id,
       },
     },
     include: { order: true, review: true },
@@ -65,7 +69,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       data: {
         productId: params.id,
         orderItemId: orderItem.id,
-        customerName: orderItem.order.customerName,
+        customerName: customer.name,
         rating,
         comment,
       },

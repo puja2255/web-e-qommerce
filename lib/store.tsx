@@ -92,8 +92,8 @@ interface StoreContextValue extends AppState {
   logoutAdmin: () => void;
   addToCart: (productId: string, quantity?: number) => void;
   dismissCartNotice: () => void;
-  registerCustomer: (data: Omit<CustomerSession, "id">) => void;
-  loginCustomer: (email: string) => boolean;
+  registerCustomer: (data: Omit<CustomerSession, "id"> & { password: string }) => Promise<{ ok: boolean; message?: string }>;
+  loginCustomer: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logoutCustomer: () => void;
   saveCustomerAddress: (address: Omit<CustomerAddress, "id">) => void;
   deleteCustomerAddress: (addressId: string) => void;
@@ -148,7 +148,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.theme)),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.cart)),
           Promise.resolve(null),
-          Promise.resolve(window.localStorage.getItem(SESSION_KEYS.customer)),
+          fetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok ? response.json() : { customer: null }),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.addresses)),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.orders)),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.banners)),
@@ -171,7 +171,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           orders: Array.from(orderMap.values()),
           banners: storedBanners ? (JSON.parse(storedBanners) as Banner[]) : seedState.banners,
         });
-        setCustomerSession(storedCustomer ? (JSON.parse(storedCustomer) as CustomerSession) : null);
+        setCustomerSession(storedCustomer?.customer ?? null);
         setCustomerAddresses(storedAddresses ? (JSON.parse(storedAddresses) as CustomerAddress[]) : []);
       } catch {
         setState(seedState);
@@ -189,7 +189,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     window.localStorage.setItem(SESSION_KEYS.theme, state.theme);
     window.localStorage.setItem(SESSION_KEYS.cart, JSON.stringify(state.cart));
-    window.localStorage.setItem(SESSION_KEYS.customer, JSON.stringify(customerSession));
     window.localStorage.setItem(SESSION_KEYS.addresses, JSON.stringify(customerAddresses));
     window.localStorage.setItem(SESSION_KEYS.orders, JSON.stringify(state.orders.filter((order) => order.customerId?.startsWith("customer-"))));
     window.localStorage.setItem(SESSION_KEYS.banners, JSON.stringify(state.banners));
@@ -293,16 +292,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const dismissCartNotice = () => setCartNotice(null);
 
-  const registerCustomer = (data: Omit<CustomerSession, "id">) => {
-    setCustomerSession({ id: `customer-${Date.now()}`, ...data });
+  const registerCustomer = async (data: Omit<CustomerSession, "id"> & { password: string }) => {
+    try {
+      const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      const result = await response.json();
+      if (!response.ok) return { ok: false, message: result.message };
+      setCustomerSession(result.customer); return { ok: true };
+    } catch { return { ok: false, message: "Tidak dapat terhubung ke layanan akun." }; }
   };
 
-  const loginCustomer = (email: string) => {
-    if (customerSession?.email.toLowerCase() === email.trim().toLowerCase()) return true;
-    return false;
+  const loginCustomer = async (email: string, password: string) => {
+    try { const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }); const result = await response.json(); if (!response.ok) return { ok: false, message: result.message }; setCustomerSession(result.customer); return { ok: true }; } catch { return { ok: false, message: "Tidak dapat terhubung ke layanan akun." }; }
   };
 
-  const logoutCustomer = () => setCustomerSession(null);
+  const logoutCustomer = () => { setCustomerSession(null); void fetch("/api/auth/logout", { method: "POST" }); };
 
   const saveCustomerAddress = (address: Omit<CustomerAddress, "id">) => {
     setCustomerAddresses((current) => {
@@ -358,6 +361,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const createOrder = (payload: CheckoutPayload) => {
+    if (!customerSession) return null;
     const paymentMethod = state.paymentMethods.find((method) => method.id === payload.paymentMethodId);
     if (!paymentMethod) {
       return null;
@@ -397,7 +401,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       totalAmount,
       shippingFee,
       adminNote: "",
-      customerId: payload.customerId,
+      customerId: customerSession.id,
       paymentDueAt: paymentMethod.type === "COD" ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       items,
       createdAt,
@@ -429,7 +433,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           },
           body: JSON.stringify({
             ...payload,
-            customerId: undefined,
             items,
           }),
         });
