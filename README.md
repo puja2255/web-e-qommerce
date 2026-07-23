@@ -45,5 +45,3 @@ cmd /c npx prisma db seed
 - UI frontend sudah disiapkan agar bisa dipakai sebagai prototipe langsung.
 - Skema Prisma sudah disediakan untuk backend PostgreSQL.
 - Jika ingin membuat aplikasi mobile React Native nanti, struktur data dan flow sudah tinggal dipindahkan.
-
-1
