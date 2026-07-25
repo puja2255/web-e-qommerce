@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { mapOrder } from "@/lib/server-data";
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   const body = await request.json();
@@ -8,6 +9,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     data: {
       status: body.status,
       paymentStatus: body.paymentStatus,
+      paymentProofUrl: typeof body.paymentProofUrl === "string" ? body.paymentProofUrl : undefined,
       adminNote: body.adminNote ?? undefined,
     },
     include: {
@@ -17,18 +19,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     },
   });
 
-  return NextResponse.json({
-    ...order,
-    items: order.items.map((item) => ({
-      productId: item.productId,
-      productName: item.productName,
-      unitPrice: item.unitPrice,
-      quantity: item.quantity,
-      subtotal: item.subtotal,
-      image: item.imageUrl,
-    })),
-    createdAt: order.createdAt.toISOString(),
-  });
+  return NextResponse.json(mapOrder(order));
 }
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {

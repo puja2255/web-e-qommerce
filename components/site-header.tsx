@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, MapPin, MessageCircleMore, ShoppingBag, Store, UserRound, X } from "lucide-react";
+import { MessageCircleMore, ShoppingBag, Store, UserRound, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { adminWhatsappLink } from "@/lib/contact";
@@ -12,9 +12,6 @@ const links = [
   { href: "/", label: "Beranda" },
   { href: "/products", label: "Produk" },
   { href: "/cart", label: "Keranjang" },
-  { href: "/checkout", label: "Checkout" },
-  { href: "/account#alamat", label: "Alamat" },
-  { href: "/account", label: "Akun Saya" },
 ];
 
 export function SiteHeader() {
@@ -50,12 +47,7 @@ export function SiteHeader() {
             <span className="brand-mark">
               <Store size={20} />
             </span>
-            <span>
-              Golden Store
-              <span className="tiny muted" style={{ display: "block" }}>
-                E-commerce terpercaya untuk produk terbaik
-              </span>
-            </span>
+            <span>Golden Store</span>
           </Link>
 
           <nav className="nav-links" aria-label="Navigasi utama">
@@ -71,7 +63,7 @@ export function SiteHeader() {
           </nav>
 
           <div className="nav-links">
-            <Link href="/cart" className="button-icon" aria-label="Keranjang" title="Keranjang">
+            <Link href="/checkout" className="button-icon" aria-label="Checkout" title="Checkout">
               <ShoppingBag size={18} />
               <span className="badge-float">{cart.length}</span>
             </Link>
@@ -90,13 +82,6 @@ export function SiteHeader() {
             </a>
             <ThemeToggle />
           </div>
-        </div>
-      </div>
-      <div className="commerce-banner">
-        <div className="site-shell commerce-banner__inner">
-          <span><Bell size={14} /> Gratis ongkir mulai Rp300.000</span>
-          <span><MapPin size={14} /> Ongkir dihitung sesuai alamat tujuan</span>
-          <span>Bayar transfer dalam 24 jam</span>
         </div>
       </div>
       {cartNotice ? (
