@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, MessageSquareText, ShoppingCart, Sparkles, Star } from "lucide-react";
 import { useGoldenStore } from "@/lib/store";
 import { Review } from "@/lib/types";
@@ -24,17 +24,12 @@ async function readApiJson<T>(response: Response): Promise<T> {
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = typeof params.slug === "string" ? params.slug : params.slug?.[0];
-  const router = useRouter();
-  const { products, categories, addToCart, customerSession } = useGoldenStore();
+  const { products, categories, addToCart } = useGoldenStore();
   const product = products.find((item) => item.slug === slug);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewSummary, setReviewSummary] = useState({ rating: product?.rating ?? 0, reviewsCount: product?.reviewsCount ?? 0 });
   const [loadingReviews, setLoadingReviews] = useState(true);
-  const [rating, setRating] = useState(5);
-  const [orderNumber, setOrderNumber] = useState("");
-  const [comment, setComment] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setFeedback] = useState("");
 
   useEffect(() => {
     if (!product) {
@@ -64,35 +59,6 @@ export default function ProductDetailPage() {
       active = false;
     };
   }, [product]);
-
-  async function submitReview(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!product) return;
-    if (!customerSession) { router.push(`/account?next=/products/${product.slug}`); return; }
-
-    setIsSubmitting(true);
-    setFeedback("");
-    try {
-      const response = await fetch(`/api/products/${product.id}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, orderNumber, comment }),
-      });
-      const data = await readApiJson<{ review?: Review; rating?: number; reviewsCount?: number; message?: string }>(response);
-      if (!response.ok || !data.review) throw new Error(data.message ?? "Ulasan gagal dikirim.");
-
-      setReviews((current) => [data.review!, ...current]);
-      setReviewSummary({ rating: data.rating ?? reviewSummary.rating, reviewsCount: data.reviewsCount ?? reviewSummary.reviewsCount });
-      setOrderNumber("");
-      setComment("");
-      setRating(5);
-      setFeedback("Terima kasih, ulasan kamu berhasil dikirim.");
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Ulasan gagal dikirim.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
 
   if (!product) {
     return (
@@ -211,44 +177,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <form className="panel review-form" onSubmit={submitReview}>
-          <div className="eyebrow">Beri ulasan</div>
-          <h2>Bagikan pengalamanmu</h2>
-          {!customerSession ? <p className="muted">Silakan masuk terlebih dahulu untuk memberi ulasan.</p> : null}
-          <div className="field">
-            <label>Rating</label>
-            <div className="rating-picker" aria-label="Pilih rating">
-              {Array.from({ length: 5 }, (_, index) => {
-                const value = index + 1;
-                return (
-                  <button
-                    className="rating-picker__button"
-                    type="button"
-                    key={value}
-                    onClick={() => setRating(value)}
-                    aria-label={`${value} bintang`}
-                    aria-pressed={rating === value}
-                  >
-                    <Star size={27} fill={value <= rating ? "currentColor" : "none"} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="orderNumber">Nomor pesanan</label>
-            <input className="input" id="orderNumber" value={orderNumber} onChange={(event) => setOrderNumber(event.target.value)} placeholder="GS-00001" required />
-          </div>
-          <div className="field">
-            <label htmlFor="reviewComment">Ulasan</label>
-            <textarea className="textarea" id="reviewComment" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Ceritakan pengalamanmu menggunakan produk ini." minLength={3} maxLength={1000} required />
-          </div>
-          {feedback ? <p className={feedback.startsWith("Terima kasih") ? "review-feedback review-feedback--success" : "review-feedback"}>{feedback}</p> : null}
-          <button className="button" type="submit" disabled={isSubmitting}>
-            <Star size={16} />
-            {isSubmitting ? "Mengirim..." : "Kirim ulasan"}
-          </button>
-        </form>
+        <aside className="panel review-form"><div className="eyebrow">Ulasan terverifikasi</div><h2>Sudah membeli produk ini?</h2><p className="muted">Berikan rating dan ulasan melalui riwayat pesanan setelah pesanan selesai.</p><Link href="/account" className="button-outline">Buka riwayat pesanan</Link></aside>
       </section>
 
       <section className="panel">

@@ -400,7 +400,7 @@ export async function createOrderRecord(data: {
 }) {
   const nextCount = await prisma.order.count();
   const orderNumber = `GS-${String(nextCount + 1).padStart(5, "0")}`;
-  const shippingFee = Math.max(0, Number(data.shippingFee) || 25000);
+  const shippingFee = Math.max(0, Number(data.shippingFee) || 0);
   const totalAmount = data.items.reduce((sum, item) => sum + item.subtotal, 0) + shippingFee;
   const paymentMethod = await prisma.paymentMethod.findUnique({
     where: { id: data.paymentMethodId },

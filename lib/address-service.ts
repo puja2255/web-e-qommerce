@@ -52,7 +52,9 @@ export function distanceInKm(from: { latitude: number; longitude: number }, to: 
   return Math.round(earth * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-export function shippingQuote(distanceKm: number, courier: "JNE" | "J&T" | "SICEPAT") {
+export function shippingQuote(distanceKm: number, courier: "JNE" | "J&T" | "SICEPAT", totalItems = 1) {
   const tariff = { JNE: { base: 9000, perKm: 170 }, "J&T": { base: 10000, perKm: 155 }, SICEPAT: { base: 8500, perKm: 165 } }[courier];
-  return Math.max(12000, Math.round((tariff.base + distanceKm * tariff.perKm) / 500) * 500);
+  const delivery = Math.max(12000, Math.round((tariff.base + distanceKm * tariff.perKm) / 500) * 500);
+  const extraItems = Array.from({ length: Math.max(0, totalItems - 1) }, (_, index) => Math.max(500, 2000 - index * 300));
+  return delivery + extraItems.reduce((sum, fee) => sum + fee, 0);
 }

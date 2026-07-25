@@ -17,7 +17,7 @@ import {
   Product,
   ThemeMode,
 } from "@/lib/types";
-import { makeOrderNumber, slugify } from "@/lib/utils";
+import { slugify } from "@/lib/utils";
 
 const SESSION_KEYS = {
   theme: "golden-store-theme-v1",
@@ -100,8 +100,10 @@ interface StoreContextValue extends AppState {
   updateCartQuantity: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
-  createOrder: (payload: CheckoutPayload) => Order | null;
+  createOrder: (payload: CheckoutPayload) => Promise<Order | null>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  uploadPaymentProof: (orderId: string, file: File) => Promise<{ ok: boolean; message?: string }>;
+  refreshData: () => Promise<void>;
   createProduct: (draft: ProductDraft) => void;
   updateProduct: (productId: string, draft: ProductDraft) => void;
   deleteProduct: (productId: string) => void;
@@ -360,7 +362,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const createOrder = (payload: CheckoutPayload) => {
+  const createOrder = async (payload: CheckoutPayload) => {
     if (!customerSession) return null;
     const paymentMethod = state.paymentMethods.find((method) => method.id === payload.paymentMethodId);
     if (!paymentMethod) {
@@ -380,53 +382,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       image: item.image,
     }));
 
-    const shippingFee = payload.shippingFee;
-    const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-    const totalAmount = subtotal + shippingFee;
-    const nextOrderNumber = makeOrderNumber(state.orders.length + 1);
-    const createdAt = new Date().toISOString();
-    const order: Order = {
-      id: `ord-${Date.now()}`,
-      orderNumber: nextOrderNumber,
-      customerName: payload.customerName,
-      customerPhone: payload.customerPhone,
-      customerAddress: payload.customerAddress,
-      mapsLink: payload.mapsLink,
-      notes: payload.notes,
-      status: "PENDING",
-      // Pembayaran transfer baru dianggap selesai setelah diverifikasi admin.
-      paymentStatus: "UNPAID",
-      paymentMethodId: paymentMethod.id,
-      paymentProofUrl: payload.paymentProofUrl,
-      totalAmount,
-      shippingFee,
-      adminNote: "",
-      customerId: customerSession.id,
-      paymentDueAt: paymentMethod.type === "COD" ? undefined : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      items,
-      createdAt,
-    };
-
-    setState((current) => ({
-      ...current,
-      orders: [order, ...current.orders],
-      cart: [],
-      products: current.products.map((product) => {
-        const match = current.cart.find((item) => item.productId === product.id);
-        if (!match) {
-          return product;
-        }
-        return {
-          ...product,
-          stock: Math.max(0, product.stock - match.quantity),
-          isActive: Math.max(0, product.stock - match.quantity) > 0 ? product.isActive : false,
-        };
-      }),
-    }));
-
-    void (async () => {
-      try {
-        await fetch("/api/orders", {
+    try {
+      const response = await fetch("/api/orders", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -436,13 +393,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             items,
           }),
         });
-        await refreshCollections();
-      } catch {
-        // Keep optimistic state.
-      }
-    })();
+      const result = await response.json();
+      if (!response.ok) return null;
+      const order = result as Order;
+      setState((current) => ({ ...current, orders: [order, ...current.orders.filter((item) => item.id !== order.id)], cart: [] }));
+      await refreshCollections();
+      return order;
+    } catch {
+      return null;
+    }
+  };
 
-    return order;
+  const uploadPaymentProof = async (orderId: string, file: File) => {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const upload = await fetch("/api/uploads", { method: "POST", body: form });
+      const uploadResult = await upload.json();
+      if (!upload.ok) return { ok: false, message: uploadResult.message };
+      const updated = await fetch(`/api/orders/${orderId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paymentProofUrl: uploadResult.url, paymentStatus: "PAID" }) });
+      if (!updated.ok) return { ok: false, message: "Bukti tidak dapat disimpan." };
+      const order = await updated.json() as Order;
+      setState((current) => ({ ...current, orders: current.orders.map((item) => item.id === order.id ? order : item) }));
+      return { ok: true };
+    } catch { return { ok: false, message: "Unggah bukti pembayaran gagal." }; }
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
@@ -790,6 +764,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     clearCart,
     createOrder,
     updateOrderStatus,
+    uploadPaymentProof,
+    refreshData: refreshCollections,
     createProduct,
     updateProduct,
     deleteProduct,
