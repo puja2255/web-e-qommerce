@@ -92,8 +92,10 @@ interface StoreContextValue extends AppState {
   logoutAdmin: () => void;
   addToCart: (productId: string, quantity?: number) => void;
   dismissCartNotice: () => void;
-  registerCustomer: (data: Omit<CustomerSession, "id"> & { password: string }) => Promise<{ ok: boolean; message?: string }>;
-  loginCustomer: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
+  registerCustomer: (data: Pick<CustomerSession, "name" | "email"> & { password: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
+  loginCustomer: (identity: string, password: string) => Promise<{ ok: boolean; message?: string }>;
+  requestOtp: (email: string, purpose: "REGISTER" | "PROFILE") => Promise<{ ok: boolean; message?: string; debugCode?: string }>;
+  updateCustomerProfile: (data: { name?: string; password?: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   logoutCustomer: () => void;
   saveCustomerAddress: (address: Omit<CustomerAddress, "id">) => void;
   deleteCustomerAddress: (addressId: string) => void;
@@ -294,7 +296,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const dismissCartNotice = () => setCartNotice(null);
 
-  const registerCustomer = async (data: Omit<CustomerSession, "id"> & { password: string }) => {
+  const registerCustomer = async (data: Pick<CustomerSession, "name" | "email"> & { password: string; otp: string }) => {
     try {
       const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
       const result = await response.json();
@@ -303,8 +305,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch { return { ok: false, message: "Tidak dapat terhubung ke layanan akun." }; }
   };
 
-  const loginCustomer = async (email: string, password: string) => {
-    try { const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }); const result = await response.json(); if (!response.ok) return { ok: false, message: result.message }; setCustomerSession(result.customer); return { ok: true }; } catch { return { ok: false, message: "Tidak dapat terhubung ke layanan akun." }; }
+  const loginCustomer = async (identity: string, password: string) => {
+    try { const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identity, password }) }); const result = await response.json(); if (!response.ok) return { ok: false, message: result.message }; setCustomerSession(result.customer); return { ok: true }; } catch { return { ok: false, message: "Tidak dapat terhubung ke layanan akun." }; }
+  };
+
+  const requestOtp = async (email: string, purpose: "REGISTER" | "PROFILE") => {
+    try { const response = await fetch("/api/auth/otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, purpose }) }); const result = await response.json(); return response.ok ? { ok: true, debugCode: result.debugCode } : { ok: false, message: result.message }; } catch { return { ok: false, message: "Tidak dapat menghubungi layanan OTP." }; }
+  };
+
+  const updateCustomerProfile = async (data: { name?: string; password?: string; otp: string }) => {
+    try { const response = await fetch("/api/auth/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); const result = await response.json(); if (!response.ok) return { ok: false, message: result.message }; setCustomerSession(result.customer); return { ok: true }; } catch { return { ok: false, message: "Profil belum dapat diperbarui." }; }
   };
 
   const logoutCustomer = () => { setCustomerSession(null); void fetch("/api/auth/logout", { method: "POST" }); };
@@ -753,6 +763,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     dismissCartNotice,
     registerCustomer,
     loginCustomer,
+    requestOtp,
+    updateCustomerProfile,
     logoutCustomer,
     saveCustomerAddress,
     deleteCustomerAddress,

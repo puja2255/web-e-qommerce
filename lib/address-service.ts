@@ -52,9 +52,16 @@ export function distanceInKm(from: { latitude: number; longitude: number }, to: 
   return Math.round(earth * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-export function shippingQuote(distanceKm: number, courier: "JNE" | "J&T" | "SICEPAT", totalItems = 1) {
-  const tariff = { JNE: { base: 9000, perKm: 170 }, "J&T": { base: 10000, perKm: 155 }, SICEPAT: { base: 8500, perKm: 165 } }[courier];
-  const delivery = Math.max(12000, Math.round((tariff.base + distanceKm * tariff.perKm) / 500) * 500);
-  const extraItems = Array.from({ length: Math.max(0, totalItems - 1) }, (_, index) => Math.max(500, 2000 - index * 300));
-  return delivery + extraItems.reduce((sum, fee) => sum + fee, 0);
+export type ShippingService = "REGULER" | "INSTANT";
+
+// Ongkir dihitung dari titik lokasi, bukan dari teks alamat. Instant hanya
+// tersedia untuk pengantaran di Lampung dan setiap barang memakai tarif penuh.
+export function shippingQuote(distanceKm: number, service: ShippingService | "JNE" | "J&T" | "SICEPAT", totalItems = 1) {
+  const distance = Math.max(1, Math.ceil(distanceKm));
+  if (service === "INSTANT") return distance * 2500 * Math.max(1, totalItems);
+  return distance * 80;
+}
+
+export function isLampungAddress(text: string) {
+  return /lampung/i.test(text);
 }
