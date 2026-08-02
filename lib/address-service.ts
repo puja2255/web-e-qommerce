@@ -33,7 +33,7 @@ export function findRegionLocation(province: string, city: string, district: str
   return addressSuggestions.find((item) => item.province === province && item.city === city && item.district === district);
 }
 
-export const warehouseLocation = { latitude: -6.1754, longitude: 106.8272 };
+export const warehouseLocation = { latitude: -5.45, longitude: 105.2667 };
 
 export function googleMapsUrl(latitude: number, longitude: number) {
   return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
@@ -56,10 +56,12 @@ export type ShippingService = "REGULER" | "INSTANT";
 
 // Ongkir dihitung dari titik lokasi, bukan dari teks alamat. Instant hanya
 // tersedia untuk pengantaran di Lampung dan setiap barang memakai tarif penuh.
-export function shippingQuote(distanceKm: number, service: ShippingService | "JNE" | "J&T" | "SICEPAT", totalItems = 1) {
+export function shippingQuote(distanceKm: number, service: ShippingService, totalItems = 1) {
   const distance = Math.max(1, Math.ceil(distanceKm));
-  if (service === "INSTANT") return distance * 2500 * Math.max(1, totalItems);
-  return distance * 80;
+  if (service === "INSTANT") {
+    return distance * 2500 * Math.max(1, totalItems);
+  }
+  return distance * 90;
 }
 
 export function isLampungAddress(text: string) {

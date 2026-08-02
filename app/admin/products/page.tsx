@@ -13,6 +13,7 @@ type ImageDraft = {
 };
 
 const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
+const FREE_SHIPPING_TAG = "FREE_SHIPPING";
 
 const emptyDraft: ProductDraft = {
   name: "",
@@ -26,6 +27,7 @@ const emptyDraft: ProductDraft = {
   isActive: true,
   images: [],
   tags: [],
+  freeShippingPromo: false,
   rating: 4.5,
   reviewsCount: 0,
 };
@@ -62,13 +64,14 @@ export default function AdminProductsPage() {
       isFeatured: product.isFeatured,
       isActive: product.isActive,
       images: product.images,
-      tags: product.tags,
+      tags: product.tags.filter((tag) => tag !== FREE_SHIPPING_TAG),
+      freeShippingPromo: product.tags.includes(FREE_SHIPPING_TAG),
       rating: product.rating,
       reviewsCount: product.reviewsCount,
     });
     setImagesText(product.images.join("\n"));
     setImageUploads([]);
-    setTagsText(product.tags.join(", "));
+    setTagsText(product.tags.filter((tag) => tag !== FREE_SHIPPING_TAG).join(", "));
   };
 
   const resetForm = () => {
@@ -255,6 +258,14 @@ export default function AdminProductsPage() {
             <label className="muted-box">
               <input type="checkbox" checked={draft.isActive} onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })} /> Tampilkan aktif
             </label>
+            <label className="muted-box">
+              <input
+                type="checkbox"
+                checked={draft.freeShippingPromo}
+                onChange={(event) => setDraft({ ...draft, freeShippingPromo: event.target.checked })}
+              />{" "}
+              Promo gratis ongkir
+            </label>
           </div>
 
           <div className="field-grid">
@@ -295,6 +306,7 @@ export default function AdminProductsPage() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div className="badge-soft">{categoryName}</div>
+                    {product.tags.includes(FREE_SHIPPING_TAG) ? <div className="badge" style={{ marginLeft: 8 }}>Gratis ongkir</div> : null}
                     <h3 style={{ margin: "10px 0 6px" }}>{product.name}</h3>
                     <div className="tiny muted">{formatCurrency(product.price)}</div>
                     <div className="tiny muted">Stok: {product.stock}</div>

@@ -8,6 +8,8 @@ import { useGoldenStore } from "@/lib/store";
 import { Review } from "@/lib/types";
 import { formatCurrency, getMainImage } from "@/lib/utils";
 
+const FREE_SHIPPING_TAG = "FREE_SHIPPING";
+
 async function readApiJson<T>(response: Response): Promise<T> {
   const body = await response.text();
   if (!body) {
@@ -106,6 +108,8 @@ export default function ProductDetailPage() {
             </span>
           </div>
 
+          {product.tags.includes(FREE_SHIPPING_TAG) ? <span className="badge">Gratis ongkir</span> : null}
+
           <h1 style={{ marginBottom: 10 }}>{product.name}</h1>
           <p className="muted">{product.description}</p>
           <div style={{ fontSize: "2rem", fontWeight: 800 }}>{formatCurrency(product.price)}</div>
@@ -129,9 +133,11 @@ export default function ProductDetailPage() {
           <div className="muted-box" style={{ marginTop: 18 }}>
             <strong>Highlight</strong>
             <ul style={{ paddingLeft: 18, marginBottom: 0 }}>
-              {product.tags.map((tag) => (
-                <li key={tag}>{tag}</li>
-              ))}
+              {product.tags
+                .filter((tag) => tag !== FREE_SHIPPING_TAG)
+                .map((tag) => (
+                  <li key={tag}>{tag}</li>
+                ))}
             </ul>
           </div>
         </div>
