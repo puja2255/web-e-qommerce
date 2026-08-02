@@ -530,6 +530,242 @@ img {
   margin-top: 18px;
 }
 
+.auth-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.auth-switch button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.auth-switch button.active {
+  color: var(--text);
+  background: var(--gold-soft);
+  border-color: var(--line);
+}
+
+.account-page {
+  gap: 18px;
+}
+
+.account-hero {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.account-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 120px));
+  gap: 10px;
+}
+
+.account-hero__stats div {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+}
+
+.account-hero__stats strong {
+  font-size: 1.2rem;
+}
+
+.address-system {
+  display: grid;
+  gap: 14px;
+}
+
+.address-list {
+  display: grid;
+  gap: 10px;
+}
+
+.address-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.address-suggestions {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.address-suggestions button {
+  text-align: left;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.location-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.location-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.location-status.ready {
+  color: var(--text);
+  background: var(--gold-soft);
+}
+
+.address-map {
+  width: 100%;
+  min-height: 220px;
+  border: 0;
+  border-radius: 18px;
+}
+
+.orders-panel {
+  gap: 14px;
+}
+
+.orders-panel__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.orders-count {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.orders-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.order-list {
+  display: grid;
+  gap: 14px;
+}
+
+.order-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.order-card__top,
+.order-card__summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.order-status-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--gold-soft);
+}
+
+.order-progress {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.order-progress__step {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.order-progress__step span {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+}
+
+.order-progress__step.is-active {
+  color: var(--text);
+}
+
+.order-progress__step.is-active span {
+  background: var(--gold-soft);
+}
+
+.shipping-quote {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--gold-soft);
+  border: 1px solid var(--line);
+}
+
+.payment-window {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.address-checkout {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

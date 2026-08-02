@@ -42,6 +42,7 @@ export interface ProductDraft {
   isActive: boolean;
   images: string[];
   tags: string[];
+  freeShippingPromo: boolean;
   rating: number;
   reviewsCount: number;
 }
@@ -94,10 +95,11 @@ interface StoreContextValue extends AppState {
   dismissCartNotice: () => void;
   registerCustomer: (data: Pick<CustomerSession, "name" | "email"> & { password: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   loginCustomer: (identity: string, password: string) => Promise<{ ok: boolean; message?: string }>;
-  requestOtp: (email: string, purpose: "REGISTER" | "PROFILE") => Promise<{ ok: boolean; message?: string; debugCode?: string }>;
+  requestOtp: (email: string, purpose: "REGISTER" | "PROFILE" | "RESET_PASSWORD") => Promise<{ ok: boolean; message?: string; debugCode?: string }>;
   updateCustomerProfile: (data: { name?: string; password?: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
+  resetCustomerPassword: (data: { email: string; password: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   logoutCustomer: () => void;
-  saveCustomerAddress: (address: Omit<CustomerAddress, "id">) => void;
+  saveCustomerAddress: (address: Omit<CustomerAddress, "id"> & { id?: string }) => void;
   deleteCustomerAddress: (addressId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
@@ -125,6 +127,8 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 
 type SessionStorageState = Pick<AppState, "theme" | "cart" | "adminSession">;
 
+const FREE_SHIPPING_TAG = "FREE_SHIPPING";
+
 async function fetchBootstrapState() {
   const response = await fetch("/api/bootstrap", {
     cache: "no-store",
@@ -147,11 +151,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [bootstrapState, storedTheme, storedCart, storedAdmin, storedCustomer, storedAddresses, storedOrders, storedBanners] = await Promise.all([
+        const [bootstrapState, storedTheme, storedCart, storedCustomer, storedAddresses, storedOrders, storedBanners] = await Promise.all([
           fetchBootstrapState(),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.theme)),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.cart)),
-          Promise.resolve(null),
           fetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok ? response.json() : { customer: null }),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.addresses)),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.orders)),
@@ -161,7 +164,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const sessionState: SessionStorageState = {
           theme: (storedTheme as ThemeMode | null) ?? seedState.theme,
           cart: storedCart ? (JSON.parse(storedCart) as CartItem[]) : seedState.cart,
-          adminSession: storedAdmin ? (JSON.parse(storedAdmin) as AppState["adminSession"]) : null,
+          adminSession: null,
         };
 
         const customerOrders = storedOrders ? (JSON.parse(storedOrders) as Order[]) : [];
@@ -194,7 +197,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(SESSION_KEYS.theme, state.theme);
     window.localStorage.setItem(SESSION_KEYS.cart, JSON.stringify(state.cart));
     window.localStorage.setItem(SESSION_KEYS.addresses, JSON.stringify(customerAddresses));
-    window.localStorage.setItem(SESSION_KEYS.orders, JSON.stringify(state.orders.filter((order) => order.customerId?.startsWith("customer-"))));
+    window.localStorage.setItem(SESSION_KEYS.orders, JSON.stringify(state.orders));
     window.localStorage.setItem(SESSION_KEYS.banners, JSON.stringify(state.banners));
     document.documentElement.dataset.theme = state.theme;
   }, [hydrated, state, customerSession, customerAddresses]);
@@ -220,10 +223,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refreshCollections = async () => {
     try {
       const bootstrapState = await fetchBootstrapState();
+      const orderMap = new Map<string, Order>();
+      [...state.orders, ...bootstrapState.orders].forEach((order) => {
+        orderMap.set(order.id, order);
+      });
       setState((current) => ({
         ...current,
         ...bootstrapState,
-        orders: [...current.orders.filter((order) => order.customerId?.startsWith("customer-")), ...bootstrapState.orders.filter((order) => !current.orders.some((currentOrder) => currentOrder.orderNumber === order.orderNumber))],
+        orders: Array.from(orderMap.values()),
       }));
     } catch {
       // Keep optimistic state if refresh fails.
@@ -309,7 +316,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try { const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identity, password }) }); const result = await response.json(); if (!response.ok) return { ok: false, message: result.message }; setCustomerSession(result.customer); return { ok: true }; } catch { return { ok: false, message: "Tidak dapat terhubung ke layanan akun." }; }
   };
 
-  const requestOtp = async (email: string, purpose: "REGISTER" | "PROFILE") => {
+  const requestOtp = async (email: string, purpose: "REGISTER" | "PROFILE" | "RESET_PASSWORD") => {
     try { const response = await fetch("/api/auth/otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, purpose }) }); const result = await response.json(); return response.ok ? { ok: true, debugCode: result.debugCode } : { ok: false, message: result.message }; } catch { return { ok: false, message: "Tidak dapat menghubungi layanan OTP." }; }
   };
 
@@ -317,12 +324,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try { const response = await fetch("/api/auth/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); const result = await response.json(); if (!response.ok) return { ok: false, message: result.message }; setCustomerSession(result.customer); return { ok: true }; } catch { return { ok: false, message: "Profil belum dapat diperbarui." }; }
   };
 
+  const resetCustomerPassword = async (data: { email: string; password: string; otp: string }) => {
+    try {
+      const response = await fetch("/api/auth/password/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (!response.ok) return { ok: false, message: result.message };
+      if (result.customer) {
+        setCustomerSession(result.customer);
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "Reset password belum dapat diproses." };
+    }
+  };
+
   const logoutCustomer = () => { setCustomerSession(null); void fetch("/api/auth/logout", { method: "POST" }); };
 
-  const saveCustomerAddress = (address: Omit<CustomerAddress, "id">) => {
+  const saveCustomerAddress = (address: Omit<CustomerAddress, "id"> & { id?: string }) => {
     setCustomerAddresses((current) => {
-      const next = { ...address, id: `address-${Date.now()}` };
-      return address.isPrimary ? [next, ...current.map((item) => ({ ...item, isPrimary: false }))] : [...current, next];
+      const next = { ...address, id: address.id ?? `address-${Date.now()}` };
+      const withoutCurrent = current.filter((item) => item.id !== next.id);
+      const normalized = address.isPrimary ? withoutCurrent.map((item) => ({ ...item, isPrimary: false })) : withoutCurrent;
+      return address.isPrimary ? [next, ...normalized] : [...normalized, next];
     });
   };
 
@@ -463,6 +490,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const createProduct = (draft: ProductDraft) => {
+    const tags = draft.freeShippingPromo
+      ? Array.from(new Set([...draft.tags.filter((tag) => tag !== FREE_SHIPPING_TAG), FREE_SHIPPING_TAG]))
+      : draft.tags.filter((tag) => tag !== FREE_SHIPPING_TAG);
+
     setState((current) => {
       const id = `prd-${Date.now()}`;
       const slug = slugify(draft.name);
@@ -479,7 +510,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         isFeatured: draft.isFeatured,
         isActive: draft.isActive,
         images: draft.images,
-        tags: draft.tags,
+        tags,
         rating: draft.rating,
         reviewsCount: draft.reviewsCount,
       };
@@ -497,7 +528,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(draft),
+          body: JSON.stringify({
+            ...draft,
+            tags,
+          }),
         });
         await refreshCollections();
       } catch {
@@ -507,6 +541,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateProduct = (productId: string, draft: ProductDraft) => {
+    const tags = draft.freeShippingPromo ? Array.from(new Set([...draft.tags.filter((tag) => tag !== FREE_SHIPPING_TAG), FREE_SHIPPING_TAG])) : draft.tags.filter((tag) => tag !== FREE_SHIPPING_TAG);
     setState((current) => ({
       ...current,
       products: current.products.map((product) =>
@@ -524,7 +559,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               isFeatured: draft.isFeatured,
               isActive: draft.isActive,
               images: draft.images,
-              tags: draft.tags,
+              tags,
               rating: draft.rating,
               reviewsCount: draft.reviewsCount,
             }
@@ -539,7 +574,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(draft),
+          body: JSON.stringify({
+            ...draft,
+            tags,
+          }),
         });
         await refreshCollections();
       } catch {
@@ -765,6 +803,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     loginCustomer,
     requestOtp,
     updateCustomerProfile,
+    resetCustomerPassword,
     logoutCustomer,
     saveCustomerAddress,
     deleteCustomerAddress,
