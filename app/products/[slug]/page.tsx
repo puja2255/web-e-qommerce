@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, MessageSquareText, ShoppingCart, Sparkles, Star } from "lucide-react";
+import { ProductCard } from "@/components/product-card";
 import { useGoldenStore } from "@/lib/store";
 import { Review } from "@/lib/types";
 import { formatCurrency, getMainImage } from "@/lib/utils";
@@ -194,18 +195,7 @@ export default function ProductDetailPage() {
         <div className="grid grid-3" style={{ marginTop: 16 }}>
           {relatedProducts.map((item) => {
             const relatedCategory = categories.find((category) => category.id === item.categoryId)?.name ?? "Produk";
-            return (
-              <div key={item.id} className="card">
-                <Link href={`/products/${item.slug}`} className="card-media">
-                  <img src={getMainImage(item)} alt={item.name} />
-                </Link>
-                <div className="card-body">
-                  <div className="badge-soft">{relatedCategory}</div>
-                  <h3 className="card-title">{item.name}</h3>
-                  <div className="muted tiny">{formatCurrency(item.price)}</div>
-                </div>
-              </div>
-            );
+            return <ProductCard key={item.id} product={item} categoryName={relatedCategory} onAddToCart={addToCart} />;
           })}
         </div>
       </section>

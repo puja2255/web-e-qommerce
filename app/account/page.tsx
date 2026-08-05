@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   Clock3,
-  KeyRound,
   LogOut,
   MapPin,
   PackageCheck,
@@ -330,9 +329,6 @@ export default function AccountPage() {
           <button type="button" className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); }}>
             Daftar
           </button>
-          <button type="button" className={mode === "reset" ? "active" : ""} onClick={() => { setMode("reset"); setError(""); }}>
-            Reset password
-          </button>
         </div>
 
         <form className="stack" onSubmit={submitAuth}>
@@ -344,13 +340,25 @@ export default function AccountPage() {
           ) : null}
 
           <div className="field">
-            <label>Nama atau email</label>
+            <label>{mode === "login" ? "Nama atau email" : "Email"}</label>
             <input className="input" type="text" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
 
           <div className="field">
             <label>Password</label>
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+            {mode === "login" ? (
+              <button
+                className="button-ghost auth-forgot"
+                type="button"
+                onClick={() => {
+                  setMode("reset");
+                  setError("");
+                }}
+              >
+                Lupa password?
+              </button>
+            ) : null}
           </div>
 
           {mode !== "login" ? (
@@ -369,7 +377,7 @@ export default function AccountPage() {
 
           <button className="button" type="submit" disabled={busy}>
             <UserRound size={16} />
-            {busy ? "Memproses..." : mode === "login" ? "Masuk" : mode === "register" ? "Buat akun" : "Reset password"}
+            {busy ? "Memproses..." : mode === "login" ? "Masuk" : mode === "register" ? "Buat akun" : "Lupa password"}
           </button>
         </form>
       </section>
@@ -378,8 +386,8 @@ export default function AccountPage() {
 
   return (
     <div className="stack account-page">
-      <section className="account-hero">
-        <div>
+      <section className="account-hero panel">
+        <div className="account-hero__main">
           <div className="eyebrow">
             <UserRound size={14} />
             Akun Saya
@@ -399,27 +407,51 @@ export default function AccountPage() {
             <span>Sedang berjalan</span>
           </div>
         </div>
-        <button className="button-outline" onClick={logoutCustomer}>
+        <div className="account-nav">
+          <label className="muted tiny" htmlFor="account-nav">
+            Akun Saya
+          </label>
+          <select id="account-nav" className="select" value={tab} onChange={(event) => setTab(event.target.value as typeof tab)}>
+            <option value="profile">Profil</option>
+            <option value="addresses">Alamat</option>
+            <option value="orders">Pesanan</option>
+          </select>
+        </div>
+        <button className="button-outline account-logout" type="button" onClick={logoutCustomer}>
           <LogOut size={16} />
           Keluar
         </button>
       </section>
 
-      <div className="auth-switch">
-        <button type="button" className={tab === "profile" ? "active" : ""} onClick={() => setTab("profile")}>
-          Profil
-        </button>
-        <button type="button" className={tab === "addresses" ? "active" : ""} onClick={() => setTab("addresses")}>
-          Alamat
-        </button>
-        <button type="button" className={tab === "orders" ? "active" : ""} onClick={() => setTab("orders")}>
-          Pesanan
-        </button>
-      </div>
-
       {tab === "profile" ? (
-        <section className="grid grid-2">
-          <div className="panel">
+        <section className="panel profile-shell">
+          <div className="profile-summary">
+            <div className="eyebrow">
+              <PencilLine size={14} />
+              Profil saya
+            </div>
+            <h2>{customerSession.name}</h2>
+            <p className="muted">
+              {customerSession.email} · {customerSession.phone}
+            </p>
+          </div>
+
+          <div className="muted-box profile-detail">
+            <div>
+              <span className="tiny muted">Email</span>
+              <strong>{customerSession.email}</strong>
+            </div>
+            <div>
+              <span className="tiny muted">No WA</span>
+              <strong>{customerSession.phone}</strong>
+            </div>
+            <div>
+              <span className="tiny muted">Password</span>
+              <strong>Disembunyikan</strong>
+            </div>
+          </div>
+
+          <form className="stack profile-form" onSubmit={saveProfile}>
             <div className="eyebrow">
               <PencilLine size={14} />
               Edit profil
@@ -427,42 +459,28 @@ export default function AccountPage() {
             <h2>Ubah nama atau password</h2>
             <p className="muted">Setiap perubahan harus diverifikasi dengan OTP email.</p>
 
-            <form className="stack" onSubmit={saveProfile}>
-              <div className="field">
-                <label>Nama</label>
-                <input className="input" value={profileName} onChange={(event) => setProfileName(event.target.value)} />
-              </div>
-              <div className="field">
-                <label>Password baru</label>
-                <input className="input" type="password" value={profilePassword} onChange={(event) => setProfilePassword(event.target.value)} minLength={8} placeholder="Kosongkan jika tidak diubah" />
-              </div>
-              <div className="field">
-                <label>OTP email</label>
-                <div className="row-actions">
-                  <input className="input" value={profileOtp} onChange={(event) => setProfileOtp(event.target.value)} maxLength={6} required />
-                  <button className="button-outline" type="button" onClick={() => void sendOtp("PROFILE")}>
-                    Kirim OTP
-                  </button>
-                </div>
-              </div>
-              <button className="button" type="submit">
-                <ShieldCheck size={16} />
-                Simpan profil
-              </button>
-            </form>
-          </div>
-
-          <div className="panel">
-            <div className="eyebrow">
-              <KeyRound size={14} />
-              Keamanan akun
+            <div className="field">
+              <label>Nama</label>
+              <input className="input" value={profileName} onChange={(event) => setProfileName(event.target.value)} />
             </div>
-            <h2>Reset password</h2>
-            <p className="muted">Kalau kamu lupa password, alurnya bisa dimulai ulang dari sini.</p>
-            <div className="muted-box">
-              Email aktif: <strong>{customerSession.email}</strong>
+            <div className="field">
+              <label>Password baru</label>
+              <input className="input" type="password" value={profilePassword} onChange={(event) => setProfilePassword(event.target.value)} minLength={8} placeholder="Kosongkan jika tidak diubah" />
             </div>
-          </div>
+            <div className="field">
+              <label>OTP email</label>
+              <div className="row-actions">
+                <input className="input" value={profileOtp} onChange={(event) => setProfileOtp(event.target.value)} maxLength={6} required />
+                <button className="button-outline" type="button" onClick={() => void sendOtp("PROFILE")}>
+                  Kirim OTP
+                </button>
+              </div>
+            </div>
+            <button className="button" type="submit">
+              <ShieldCheck size={16} />
+              Simpan profil
+            </button>
+          </form>
         </section>
       ) : null}
 
