@@ -60,6 +60,17 @@ export default function CheckoutPage() {
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
 
   useEffect(() => {
+    if (!recipientAddresses.length) {
+      setAddressMode("manual");
+      return;
+    }
+
+    if (addressMode === "saved" && !selectedAddressId && recipientAddresses[0]) {
+      setSelectedAddressId(recipientAddresses[0].id);
+    }
+  }, [addressMode, recipientAddresses, selectedAddressId]);
+
+  useEffect(() => {
     if (!customerSession) {
       router.replace("/account?next=/checkout");
     }
@@ -111,8 +122,11 @@ export default function CheckoutPage() {
 
     if (!customerSession) return router.push("/account?next=/checkout");
     if (!cart.length) return setError("Keranjang masih kosong.");
-    if (!customerName || !customerPhone || !customerAddress || !postalCode || !mapsLink || !paymentMethodId) {
-      return setError("Lengkapi data checkout dan titik lokasi/maps.");
+    if (addressMode === "manual" && (!customerName || !customerPhone || !customerAddress || !postalCode || !mapsLink)) {
+      return setError("Lengkapi data manual, alamat, dan titik lokasi/maps.");
+    }
+    if (addressMode === "saved" && !selectedAddress) {
+      return setError("Pilih alamat tersimpan terlebih dahulu.");
     }
     if (!selectedCoordinates) {
       return setError("GPS atau alamat tersimpan wajib ada supaya ongkir bisa dihitung.");
@@ -174,58 +188,78 @@ export default function CheckoutPage() {
             </div>
 
             {addressMode === "saved" ? (
-              <select className="select" value={selectedAddress?.id ?? ""} onChange={(event) => chooseAddress(event.target.value)}>
-                <option value="">Pilih alamat penerima</option>
-                {recipientAddresses.map((address) => (
-                  <option key={address.id} value={address.id}>
-                    {address.label}
-                    {address.isPrimary ? " (Utama)" : ""} - {address.city}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select className="select" value={selectedAddress?.id ?? ""} onChange={(event) => chooseAddress(event.target.value)}>
+                  <option value="">Pilih alamat penerima</option>
+                  {recipientAddresses.map((address) => (
+                    <option key={address.id} value={address.id}>
+                      {address.label}
+                      {address.isPrimary ? " (Utama)" : ""} - {address.city}
+                    </option>
+                  ))}
+                </select>
+                {selectedAddress ? (
+                  <div className="checkout-address-preview">
+                    <strong>{selectedAddress.recipientName}</strong>
+                    <span>{selectedAddress.phone}</span>
+                    <span>
+                      {selectedAddress.detail}, {selectedAddress.district}, {selectedAddress.city}, {selectedAddress.province}
+                    </span>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <p className="muted tiny">Masukkan alamat manual, lalu aktifkan GPS supaya ongkir dapat dihitung.</p>
             )}
           </div>
         ) : null}
 
-        <div className="field-grid">
-          <div className="field">
-            <label>Nama</label>
-            <input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
-          </div>
-          <div className="field">
-            <label>No WA</label>
-            <input className="input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required />
-          </div>
-        </div>
+        {addressMode === "manual" ? (
+          <>
+            <div className="field-grid">
+              <div className="field">
+                <label>Nama</label>
+                <input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+              </div>
+              <div className="field">
+                <label>No WA</label>
+                <input className="input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} required />
+              </div>
+            </div>
 
-        <div className="field-grid">
-          <div className="field">
-            <label>Label alamat</label>
-            <input className="input" value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)} required />
-          </div>
-          <div className="field">
-            <label>Kode pos</label>
-            <input className="input" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required />
-          </div>
-        </div>
+            <div className="field-grid">
+              <div className="field">
+                <label>Label alamat</label>
+                <input className="input" value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)} required />
+              </div>
+              <div className="field">
+                <label>Kode pos</label>
+                <input className="input" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required />
+              </div>
+            </div>
 
-        <div className="field">
-          <label>Alamat lengkap</label>
-          <textarea className="textarea" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} required />
-        </div>
+            <div className="field">
+              <label>Alamat lengkap</label>
+              <textarea className="textarea" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} required />
+            </div>
 
-        <div className="field-grid">
-          <div className="field">
-            <label>Link Maps</label>
-            <input className="input" value={mapsLink} onChange={(e) => setMapsLink(e.target.value)} placeholder="Link Google Maps" />
-          </div>
+            <div className="field-grid">
+              <div className="field">
+                <label>Link Maps</label>
+                <input className="input" value={mapsLink} onChange={(e) => setMapsLink(e.target.value)} placeholder="Link Google Maps" />
+              </div>
+              <div className="field">
+                <label>Catatan</label>
+                <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan untuk kurir / admin" />
+              </div>
+            </div>
+          </>
+        ) : (
           <div className="field">
             <label>Catatan</label>
             <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan untuk kurir / admin" />
           </div>
-        </div>
+        )}
 
         <div className="field-grid">
           <div className="field">
@@ -246,11 +280,10 @@ export default function CheckoutPage() {
               <Truck size={14} /> Kurir
             </label>
             <select className="select" value={shippingService} onChange={(e) => setShippingService(e.target.value as ShippingService)}>
-              <option value="REGULER">Reguler - Rp 90/km</option>
-              <option value="INSTANT" disabled={!instantAllowed}>
-                Instan - Rp 2.500/km/barang {instantAllowed ? "" : "(khusus Lampung)"}
-              </option>
+              <option value="REGULER">Reguler</option>
+              <option value="INSTANT">Instan</option>
             </select>
+            {shippingService === "INSTANT" && !instantAllowed ? <span className="muted tiny">Instan hanya bisa dipakai untuk alamat Lampung.</span> : null}
           </div>
         </div>
 

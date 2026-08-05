@@ -34,8 +34,11 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState("Rumah");
+  const [recipientNameInput, setRecipientNameInput] = useState(recipientName);
+  const [phoneInput, setPhoneInput] = useState(phone);
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState("");
+  const [mapsLink, setMapsLink] = useState("");
   const [provinces, setProvinces] = useState<Region[]>([]);
   const [cities, setCities] = useState<Region[]>([]);
   const [districts, setDistricts] = useState<Region[]>([]);
@@ -51,7 +54,7 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
   const city = cities.find((item) => item.id === cityId)?.name ?? "";
   const district = districts.find((item) => item.id === districtId)?.name ?? "";
   const suggestions = useMemo(() => (query.length < 2 ? [] : addressSuggestions.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())).slice(0, 5)), [query]);
-  const verified = Boolean(provinceId && cityId && districtId && position);
+  const verified = Boolean(provinceId && cityId && districtId && (position || mapsLink));
 
   useEffect(() => {
     void loadRegions("provinces")
@@ -79,12 +82,21 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
     if (districtMatch && districtId !== districtMatch.id) setDistrictId(districtMatch.id);
   }, [editingAddress, provinces, cities, districts, provinceId, cityId, districtId]);
 
+  useEffect(() => {
+    if (editingId) return;
+    setRecipientNameInput(recipientName);
+    setPhoneInput(phone);
+  }, [recipientName, phone, editingId]);
+
   const resetForm = () => {
     setEditingAddress(null);
     setEditingId(null);
     setLabel("Rumah");
+    setRecipientNameInput(recipientName);
+    setPhoneInput(phone);
     setQuery("");
     setDetail("");
+    setMapsLink("");
     setProvinceId("");
     setCityId("");
     setDistrictId("");
@@ -97,9 +109,12 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
     setEditingAddress(address);
     setEditingId(address.id);
     setLabel(address.label);
+    setRecipientNameInput(address.recipientName);
+    setPhoneInput(address.phone);
     setDetail(address.detail);
     setPostalCode(address.postalCode ?? "");
     setQuery(address.mapsUrl ?? `${address.detail}, ${address.district}, ${address.city}, ${address.province}`);
+    setMapsLink(address.mapsUrl ?? "");
     setProvinceId(provinces.find((item) => item.name === address.province)?.id ?? "");
     setCityId(cities.find((item) => item.name === address.city)?.id ?? "");
     setDistrictId(districts.find((item) => item.name === address.district)?.id ?? "");
@@ -145,8 +160,8 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
       id: editingId ?? undefined,
       type: "RECIPIENT",
       label,
-      recipientName,
-      phone,
+      recipientName: recipientNameInput,
+      phone: phoneInput,
       province,
       city,
       district,
@@ -155,7 +170,7 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
       isPrimary: !recipientAddresses.length || recipientAddresses.some((item) => item.id === editingId && item.isPrimary),
       latitude: position?.latitude,
       longitude: position?.longitude,
-      mapsUrl: position ? googleMapsUrl(position.latitude, position.longitude) : undefined,
+      mapsUrl: mapsLink || (position ? googleMapsUrl(position.latitude, position.longitude) : undefined),
       isVerified: true,
     });
     resetForm();
@@ -193,6 +208,17 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
       </div>
 
       <form className="stack" onSubmit={submit} style={{ marginTop: 14 }}>
+        <div className="field-grid">
+          <div className="field">
+            <label>Nama penerima</label>
+            <input className="input" value={recipientNameInput} onChange={(e) => setRecipientNameInput(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>No WA</label>
+            <input className="input" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} />
+          </div>
+        </div>
+
         <div className="field-grid">
           <div className="field">
             <label>Label alamat</label>
@@ -272,20 +298,29 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
           </div>
         </div>
 
+        <div className="field-grid">
+          <div className="field">
+            <label>Link Maps</label>
+            <input className="input" value={mapsLink} onChange={(e) => setMapsLink(e.target.value)} placeholder="Tempel link Google Maps" />
+          </div>
+          <div className="field">
+            <label>Titik GPS</label>
+            <div className="location-row">
+              <button className="button-outline" type="button" onClick={useGps}>
+                <Crosshair size={16} />
+                Gunakan GPS
+              </button>
+              <span className={verified ? "location-status ready" : "location-status"}>
+                <ShieldCheck size={15} />
+                {message}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="field">
           <label>Alamat lengkap</label>
           <textarea className="textarea" value={detail} onChange={(e) => setDetail(e.target.value)} required />
-        </div>
-
-        <div className="location-row">
-          <button className="button-outline" type="button" onClick={useGps}>
-            <Crosshair size={16} />
-            Gunakan GPS
-          </button>
-          <span className={verified ? "location-status ready" : "location-status"}>
-            <ShieldCheck size={15} />
-            {message}
-          </span>
         </div>
 
         {position ? <iframe className="address-map" title="Validasi lokasi" src={googleMapsEmbedUrl(position.latitude, position.longitude)} loading="lazy" /> : null}
