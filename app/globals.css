@@ -1184,7 +1184,7 @@ th {
 .success-payment-window span { color: var(--muted); font-size: .88rem; }
 
 .account-page { gap: 22px; }
-.account-hero { padding: 22px; border-radius: var(--radius-xl); overflow: hidden; position: relative; background: linear-gradient(120deg, #35280a, #17140f 68%); border: 1px solid rgba(241, 198, 74, .25); }
+.account-hero { padding: 22px; border-radius: var(--radius-xl); overflow: hidden; position: relative;  border: 1px solid rgba(241, 198, 74, .25); }
 .account-hero::after { content: ""; position: absolute; width: 300px; height: 300px; border-radius: 50%; right: -100px; top: -170px; background: radial-gradient(circle, rgba(241,198,74,.28), transparent 67%); pointer-events: none; }
 .account-hero > * { position: relative; z-index: 1; }
 .account-hero h1 { margin: 12px 0 4px; font-size: clamp(1.65rem, 3vw, 2.3rem); }
@@ -1534,5 +1534,7 @@ th {
     width: 100%;
   }
 }
+
+
 
 @media (prefers-reduced-motion: reduce) { .order-card, .order-progress__step.is-current span { animation: none; }.order-card { transition: none; } }

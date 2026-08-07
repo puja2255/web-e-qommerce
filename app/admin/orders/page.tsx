@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MessageCircle, Search } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { useGoldenStore } from "@/lib/store";
@@ -9,8 +9,14 @@ import { orderStatusLabel, paymentStatusLabel, shortDate, whatsappLink, formatCu
 const statusOptions = ["PENDING", "CONFIRMED", "PACKED", "SHIPPED", "COMPLETED", "CANCELLED"] as const;
 
 export default function AdminOrdersPage() {
-  const { orders, updateOrderStatus } = useGoldenStore();
+  const { orders, paymentMethods, refreshData, updateOrderStatus } = useGoldenStore();
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    void refreshData();
+    const timer = window.setInterval(() => void refreshData(), 30000);
+    return () => window.clearInterval(timer);
+  }, [refreshData]);
 
   const visibleOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -22,6 +28,11 @@ export default function AdminOrdersPage() {
       );
     });
   }, [orders, query]);
+
+  const paymentMethodLabel = (paymentMethodId: string) => {
+    const method = paymentMethods.find((item) => item.id === paymentMethodId);
+    return method ? `${method.type === "COD" ? "COD" : method.label}` : paymentMethodId;
+  };
 
   return (
     <AdminShell
@@ -66,7 +77,19 @@ export default function AdminOrdersPage() {
                   <td>
                     <span className={`status-pill ${order.status.toLowerCase()}`}>{orderStatusLabel(order.status)}</span>
                   </td>
-                  <td>{paymentStatusLabel(order.paymentStatus)}</td>
+                  <td>
+                    <div className="stack" style={{ gap: 6 }}>
+                      <span className="status-pill pending" style={{ width: "fit-content" }}>
+                        {paymentMethodLabel(order.paymentMethodId)}
+                      </span>
+                      <span className="tiny muted">{paymentStatusLabel(order.paymentStatus)}</span>
+                      {order.paymentProofUrl ? (
+                        <a className="button-ghost" href={order.paymentProofUrl} target="_blank" rel="noreferrer" style={{ width: "fit-content", paddingInline: 0 }}>
+                          Lihat bukti
+                        </a>
+                      ) : null}
+                    </div>
+                  </td>
                   <td>
                     <div className="stack" style={{ gap: 8 }}>
                       <select

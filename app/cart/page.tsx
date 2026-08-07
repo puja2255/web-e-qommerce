@@ -8,8 +8,7 @@ import { formatCurrency, calcCartSubtotal } from "@/lib/utils";
 export default function CartPage() {
   const { cart, products, updateCartQuantity, removeFromCart, clearCart } = useGoldenStore();
   const subtotal = calcCartSubtotal(cart);
-  const shippingFee = cart.length > 0 ? 25000 : 0;
-  const total = subtotal + shippingFee;
+  const total = subtotal;
 
   return (
     <div className="stack" style={{ gap: 22 }}>
@@ -96,10 +95,6 @@ export default function CartPage() {
                     <strong>{formatCurrency(subtotal)}</strong>
                   </div>
                   <div className="nav-links" style={{ justifyContent: "space-between" }}>
-                    <span>Ongkir</span>
-                    <strong>{formatCurrency(shippingFee)}</strong>
-                  </div>
-                  <div className="nav-links" style={{ justifyContent: "space-between" }}>
                     <span>Total</span>
                     <strong>{formatCurrency(total)}</strong>
                   </div>
@@ -120,4 +115,3 @@ export default function CartPage() {
     </div>
   );
 }
-
