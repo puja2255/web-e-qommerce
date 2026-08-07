@@ -66,7 +66,7 @@ export default function CheckoutPage() {
     }
 
     if (addressMode === "saved" && !selectedAddressId && recipientAddresses[0]) {
-      setSelectedAddressId(recipientAddresses[0].id);
+      chooseAddress(recipientAddresses[0].id);
     }
   }, [addressMode, recipientAddresses, selectedAddressId]);
 
@@ -135,12 +135,38 @@ export default function CheckoutPage() {
       return setError("Kurir instan hanya untuk alamat Lampung.");
     }
 
+    const checkoutAddress =
+      addressMode === "saved" && selectedAddress
+        ? {
+            customerName: selectedAddress.recipientName,
+            customerPhone: selectedAddress.phone,
+            addressLabel: selectedAddress.label,
+            postalCode: selectedAddress.postalCode ?? "",
+            customerAddress: selectedAddress.detail,
+            mapsLink: selectedAddress.mapsUrl ?? "",
+          }
+        : {
+            customerName,
+            customerPhone,
+            addressLabel,
+            postalCode,
+            customerAddress,
+            mapsLink,
+          };
+
+    if (!checkoutAddress.customerName || !checkoutAddress.customerPhone || !checkoutAddress.customerAddress) {
+      return setError("Data alamat belum lengkap.");
+    }
+
     setLoading(true);
     const order = await createOrder({
-      customerName,
-      customerPhone,
-      customerAddress: `${addressLabel} - ${postalCode} - ${customerAddress}`,
-      mapsLink,
+      customerName: checkoutAddress.customerName,
+      customerPhone: checkoutAddress.customerPhone,
+      customerAddress:
+        addressMode === "saved"
+          ? `${checkoutAddress.addressLabel} - ${checkoutAddress.postalCode} - ${checkoutAddress.customerAddress}`
+          : `${checkoutAddress.addressLabel} - ${checkoutAddress.postalCode} - ${checkoutAddress.customerAddress}`,
+      mapsLink: checkoutAddress.mapsLink,
       notes,
       paymentMethodId,
       customerId: customerSession.id,

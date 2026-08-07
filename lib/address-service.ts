@@ -61,7 +61,7 @@ export function shippingQuote(distanceKm: number, service: ShippingService, tota
   if (service === "INSTANT") {
     return distance * 2500 * Math.max(1, totalItems);
   }
-  return distance * 90;
+  return distance * 90 * Math.max(1, totalItems);
 }
 
 export function isLampungAddress(text: string) {

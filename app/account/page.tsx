@@ -16,11 +16,13 @@ import {
   Truck,
   Upload,
   UserRound,
+  ChevronDown,
 } from "lucide-react";
 import { AddressForm } from "@/components/address-form";
 import { useGoldenStore } from "@/lib/store";
 import { formatCurrency, shortDate } from "@/lib/utils";
-import type { Order, OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus, PaymentMethod } from "@/lib/types";
+
 
 const STEPS = ["PENDING", "CONFIRMED", "PACKED", "SHIPPED", "COMPLETED"] as const;
 const stepLabel: Record<(typeof STEPS)[number], string> = {
@@ -69,11 +71,13 @@ function Countdown({ dueAt }: { dueAt: string }) {
 
 function OrderCard({
   order,
+  paymentMethod,
   index,
   onProof,
   onReceived,
 }: {
   order: Order;
+  paymentMethod?: PaymentMethod;
   index: number;
   onProof: (orderId: string, file: File) => Promise<void>;
   onReceived: (orderId: string) => void;
@@ -81,6 +85,14 @@ function OrderCard({
   const Icon = statusIcon[order.status];
   const currentStep = STEPS.indexOf(order.status as (typeof STEPS)[number]);
   const isAwaitingPayment = order.paymentStatus === "UNPAID" && Boolean(order.paymentDueAt);
+  const paymentExpired = Boolean(order.paymentDueAt && new Date(order.paymentDueAt).getTime() <= Date.now());
+  const canUploadProof = order.status !== "CANCELLED" && order.paymentStatus === "UNPAID" && !paymentExpired;
+  const paymentSummary =
+    paymentMethod?.type === "COD"
+      ? "COD"
+      : paymentMethod
+        ? `${paymentMethod.label}${paymentMethod.accountNumber ? ` • ${paymentMethod.accountNumber}` : ""}`
+        : "Metode pembayaran tidak ditemukan";
   const [proofBusy, setProofBusy] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [rating, setRating] = useState(5);
@@ -129,9 +141,30 @@ function OrderCard({
         </div>
       </div>
 
+      <div className="muted-box" style={{ display: "grid", gap: 4 }}>
+        <span className="tiny muted">Metode pembayaran</span>
+        <strong>{paymentSummary}</strong>
+        {paymentMethod?.type === "COD" ? (
+          <span className="tiny muted">Bayar saat pesanan diterima.</span>
+        ) : paymentMethod ? (
+          <span className="tiny muted">
+            {paymentMethod.accountName || paymentMethod.label}
+            {paymentMethod.details ? ` • ${paymentMethod.details}` : ""}
+          </span>
+        ) : null}
+      </div>
+
       {isAwaitingPayment && order.paymentDueAt ? <Countdown dueAt={order.paymentDueAt} /> : null}
 
-      {order.paymentStatus === "UNPAID" ? (
+      {paymentExpired ? (
+        <div className="muted-box" style={{ marginTop: 12 }}>
+          {order.status === "CANCELLED"
+            ? "Tenggat 24 jam habis. Pesanan dibatalkan otomatis dan bukti pembayaran tidak bisa diupload lagi."
+            : "Tenggat 24 jam sudah habis. Pesanan akan dibatalkan otomatis dan bukti pembayaran tidak bisa diupload lagi."}
+        </div>
+      ) : null}
+
+      {canUploadProof ? (
         <label className="button-outline" style={{ marginTop: 12, display: "inline-flex", width: "fit-content" }}>
           <Upload size={16} />
           {proofBusy ? "Mengunggah..." : "Upload bukti pembayaran"}
@@ -221,6 +254,7 @@ export default function AccountPage() {
   const {
     customerSession,
     customerAddresses,
+    paymentMethods,
     orders,
     registerCustomer,
     loginCustomer,
@@ -263,6 +297,7 @@ export default function AccountPage() {
   }, [customerSession, refreshData]);
 
   const myOrders = useMemo(() => (customerSession ? orders.filter((order) => order.customerId === customerSession.id) : []), [customerSession, orders]);
+  const paymentMethodMap = useMemo(() => new Map(paymentMethods.map((method) => [method.id, method])), [paymentMethods]);
 
   const sendOtp = async (purpose: "REGISTER" | "PROFILE" | "RESET_PASSWORD") => {
     const target = purpose === "PROFILE" ? customerSession?.email ?? email : email;
@@ -388,15 +423,70 @@ export default function AccountPage() {
     <div className="stack account-page">
       <section className="account-hero panel">
         <div className="account-hero__main">
+          {/* Badge Akun Saya */}
           <div className="eyebrow">
             <UserRound size={14} />
             Akun Saya
           </div>
-          <h1>Halo, {customerSession.name.split(" ")[0]}!</h1>
+
+          {/* Dropdown Navigasi */}
+          <div className="account-nav" style={{ marginTop: "12px", width: "100%", maxWidth: "220px" }}>
+            <div style={{ position: "relative", width: "100%" }}>
+              <select
+                id="account-nav"
+                className="select"
+                value={tab}
+                onChange={(event) => setTab(event.target.value as typeof tab)}
+                style={{
+                  width: "100%",
+                  padding: "10px 38px 10px 14px",
+                  borderRadius: "14px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  color: "var(--text)",
+                  border: "1px solid var(--line)",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                  fontSize: "0.88rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  outline: "none",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                <option value="profile" style={{ background: "#1e1710", color: "#f7f0dd" }}>
+                   Profil Saya
+                </option>
+                <option value="addresses" style={{ background: "#1e1710", color: "#f7f0dd" }}>
+                   Alamat Saya
+                </option>
+                <option value="orders" style={{ background: "#1e1710", color: "#f7f0dd" }}>
+                   Pesanan Saya
+                </option>
+              </select>
+              
+              {/* Panah Dropdown Custom */}
+              <ChevronDown
+                size={16}
+                style={{
+                  position: "absolute",
+                  right: "14px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                  color: "var(--gold)",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Greeting & Info */}
+          <h1 style={{ marginTop: "16px" }}>Halo, {customerSession.name.split(" ")[0]}!</h1>
           <p>
             {customerSession.email} · {customerSession.phone}
           </p>
         </div>
+
         <div className="account-hero__stats">
           <div>
             <strong>{myOrders.length}</strong>
@@ -407,16 +497,7 @@ export default function AccountPage() {
             <span>Sedang berjalan</span>
           </div>
         </div>
-        <div className="account-nav">
-          <label className="muted tiny" htmlFor="account-nav">
-            Akun Saya
-          </label>
-          <select id="account-nav" className="select" value={tab} onChange={(event) => setTab(event.target.value as typeof tab)}>
-            <option value="profile">Profil</option>
-            <option value="addresses">Alamat</option>
-            <option value="orders">Pesanan</option>
-          </select>
-        </div>
+
         <button className="button-outline account-logout" type="button" onClick={logoutCustomer}>
           <LogOut size={16} />
           Keluar
@@ -524,6 +605,7 @@ export default function AccountPage() {
               {myOrders.map((order, index) => (
                 <OrderCard
                   order={order}
+                  paymentMethod={paymentMethodMap.get(order.paymentMethodId)}
                   index={index}
                   key={order.id}
                   onProof={uploadProof}

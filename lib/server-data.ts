@@ -22,6 +22,22 @@ function fallbackState(): Pick<AppState, "categories" | "paymentMethods" | "prod
   };
 }
 
+async function expireOverdueOrders() {
+  const now = new Date();
+  await prisma.order.updateMany({
+    where: {
+      status: { not: "CANCELLED" },
+      paymentStatus: "UNPAID",
+      paymentDueAt: {
+        lt: now,
+      },
+    },
+    data: {
+      status: "CANCELLED",
+    },
+  });
+}
+
 function mapCategory(category: {
   id: string;
   name: string;
@@ -151,6 +167,8 @@ function mapOrder(order: {
 }
 
 async function queryState(): Promise<Pick<AppState, "categories" | "paymentMethods" | "products" | "orders">> {
+  await expireOverdueOrders();
+
   const [categories, paymentMethods, products, orders] = await Promise.all([
     prisma.category.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.paymentMethod.findMany({ orderBy: { createdAt: "asc" } }),
