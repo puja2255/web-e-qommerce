@@ -1,0 +1,203 @@
+Berikut tutorial deploy dan hosting yang paling aman untuk project kamu sekarang.
+
+**Rekomendasi jalur deploy**
+- Paling mudah: `Vercel` untuk Next.js.
+- Database: `PostgreSQL` cloud, lalu Prisma tetap dipakai untuk schema/migration.
+- OTP email: `Resend`.
+
+Kalau kamu deploy apa adanya, website bisa online. Tapi ingat:
+- data yang masih disimpan di browser `localStorage` akan tetap hanya tersimpan di browser/device itu,
+- sedangkan data yang lewat Prisma + PostgreSQL akan benar-benar tersimpan di server/database.
+
+**1. Siapkan project sebelum deploy**
+Jalankan dulu di laptop kamu:
+
+```bash
+npm install
+npx prisma generate
+npx tsc --noEmit
+npm run build
+```
+
+Kalau `npm run build` sukses, berarti project siap dibawa ke hosting.
+
+**2. Siapkan database production**
+Kamu butuh PostgreSQL yang online, misalnya database cloud apa pun yang memberi `DATABASE_URL`.
+
+Setelah dapat URL database production, nanti isi ke environment variable:
+
+```env
+DATABASE_URL="postgresql://..."
+```
+
+Lalu jalankan migration ke database production dengan Prisma. Di production, Prisma menyarankan memakai `migrate deploy`, bukan `migrate dev`.
+
+```bash
+npx prisma migrate deploy
+```
+
+Kalau schema berubah di masa depan, jalankan perintah itu lagi setiap ada migration baru.
+
+**3. Push project ke GitHub**
+Kalau belum ada repo GitHub:
+- buat repository baru
+- push semua kode project ke repository itu
+
+Contoh alur git:
+
+```bash
+git init
+git add .
+git commit -m "Initial deploy"
+git branch -M main
+git remote add origin https://github.com/username/golden-store.git
+git push -u origin main
+```
+
+**4. Deploy ke Vercel**
+Langkah paling praktis:
+
+- login ke [Vercel](https://vercel.com)
+- pilih `Add New Project`
+- import repository GitHub kamu
+- Vercel biasanya otomatis mengenali Next.js
+- klik deploy
+
+Kalau mau lewat CLI juga bisa:
+
+```bash
+npm i -g vercel
+vercel login
+vercel
+vercel --prod
+```
+
+**5. Isi environment variable di hosting**
+Ini bagian yang paling penting.
+
+Di Vercel, masuk ke:
+- Project
+- `Settings`
+- `Environment Variables`
+
+Isi minimal ini:
+
+```env
+DATABASE_URL="postgresql://..."
+AUTH_SECRET="isi-string-random-panjang"
+RESEND_API_KEY="api-key-resend"
+EMAIL_FROM="Golden Store <email@domainkamu.com>"
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+NEXT_PUBLIC_APP_NAME="Golden Store"
+```
+
+Kalau kamu masih testing OTP, `EMAIL_FROM` bisa ikut format dari provider email yang kamu pakai. Untuk produksi, lebih aman pakai domain kamu sendiri yang sudah diverifikasi.
+
+**Penting soal env**
+- Set env untuk environment `Production`.
+- Kalau kamu juga mau preview deploy jalan, isi juga `Preview`.
+- Setelah env berubah, lakukan redeploy.
+- Di Vercel, perubahan env hanya dipakai oleh deployment baru.
+
+**6. Jalankan migration production**
+Setelah database production dan env sudah benar, jalankan:
+
+```bash
+npx prisma migrate deploy
+```
+
+Tujuannya supaya tabel-tabel di database production benar-benar terbentuk sesuai schema Prisma.
+
+Kalau nanti ada perubahan schema:
+- buat migration di lokal
+- push ke GitHub
+- deploy ulang
+- jalankan `prisma migrate deploy` lagi di production
+
+**7. Test hasil deploy**
+Setelah website live, cek alur ini:
+- buka beranda
+- buka produk
+- login admin
+- register user
+- kirim OTP
+- checkout
+- lihat riwayat pesanan
+- upload bukti bayar kalau metode transfer
+- cek halaman admin order dan report
+
+Kalau ada error, lihat:
+- log Vercel
+- log email provider
+- log database / migration
+
+**8. Penyesuaian OTP saat hosting**
+Di project kamu sekarang, OTP sudah disiapkan untuk production email, jadi yang penting adalah konfigurasi hosting.
+
+Yang harus kamu pastikan:
+- `RESEND_API_KEY` sudah diisi di hosting
+- `EMAIL_FROM` valid
+- domain pengirim sudah diverifikasi kalau pakai domain sendiri
+- redeploy setelah env diubah
+
+Alur OTP yang sekarang:
+- OTP dikirim ke email sungguhan
+- OTP berlaku 5 menit
+- ada cooldown supaya email yang sama tidak bisa spam OTP terus
+- user bisa lihat timer OTP di halaman akun
+
+Kalau OTP tidak masuk:
+- cek `RESEND_API_KEY`
+- cek `EMAIL_FROM`
+- cek apakah domain pengirim sudah diverifikasi
+- cek folder spam/junk
+- cek log function di Vercel
+
+Kalau kamu pakai domain sendiri di Resend, umumnya kamu perlu verifikasi domain dulu. Setelah domain terverifikasi, pengiriman email dari alamat pada domain itu bisa dipakai untuk aplikasi kamu.
+
+**9. Kalau mau pakai VPS, bukan Vercel**
+Bisa juga, alurnya begini:
+- install Node.js di server
+- clone repo
+- `npm install`
+- isi `.env`
+- `npx prisma migrate deploy`
+- `npm run build`
+- `npm start`
+- pasang `Nginx` sebagai reverse proxy
+- pakai `PM2` supaya app tetap hidup
+
+Tapi untuk project Next.js, Vercel biasanya jauh lebih simpel.
+
+**10. Checklist sebelum online**
+- `npm run build` sukses
+- database production aktif
+- migration sudah jalan
+- `DATABASE_URL` benar
+- `AUTH_SECRET` benar
+- `RESEND_API_KEY` benar
+- `EMAIL_FROM` benar
+- deploy sudah selesai
+- OTP sudah dites
+- checkout sudah dites
+- admin login sudah dites
+
+**Penyesuaian OTP ke depan**
+Kalau nanti kamu mau, saya bisa bantu lanjut buat salah satu ini:
+- OTP jadi lebih ketat, misalnya tidak bisa kirim ulang sampai OTP lama dipakai atau expired
+- tampilan email OTP dibuat lebih rapi
+- rate limit OTP dibuat lebih aman
+- OTP dipakai juga untuk perubahan email, bukan cuma password/nama
+- log OTP dibuat lebih jelas di admin
+
+**Sumber resmi**
+- [Next.js Deployment](https://nextjs.org/docs/app/building-your-application/deploying)
+- [Vercel Environment Variables](https://vercel.com/docs/environment-variables)
+- [Prisma migrate deploy](https://www.prisma.io/docs/orm/prisma-migrate/workflows/deploying-prisma-migrate)
+- [Resend Domains / Sending email](https://resend.com/docs/dashboard/domains)
+
+Kalau kamu mau, saya bisa lanjut bantu bikin **panduan deploy versi super praktis khusus project kamu**, misalnya:
+1. deploy ke Vercel langkah demi langkah,
+2. isi `.env` mana saja yang harus dipindah ke Vercel,
+3. cara test OTP setelah live.
