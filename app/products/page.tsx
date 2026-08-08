@@ -58,12 +58,22 @@ export default function ProductsPage() {
             <label>Search produk</label>
             <div style={{ position: "relative" }}>
               <Search size={16} style={{ position: "absolute", left: 14, top: 14, opacity: 0.7 }} />
-              <input className="input" style={{ paddingLeft: 42 }} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nama, deskripsi, atau tag..." />
+              <input
+                className="input"
+                style={{ paddingLeft: 42 }}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Cari nama, deskripsi, atau tag..."
+              />
             </div>
           </div>
           <div className="field">
             <label>Kategori</label>
-            <select className="select" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+            <select
+              className="select"
+              value={categoryId}
+              onChange={(event) => setCategoryId(event.target.value)}
+            >
               <option value="all">Semua kategori</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
@@ -76,7 +86,12 @@ export default function ProductsPage() {
             <label>Urutkan</label>
             <div style={{ position: "relative" }}>
               <SlidersHorizontal size={16} style={{ position: "absolute", left: 14, top: 14, opacity: 0.7 }} />
-              <select className="select" style={{ paddingLeft: 42 }} value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
+              <select
+                className="select"
+                style={{ paddingLeft: 42 }}
+                value={sortKey}
+                onChange={(event) => setSortKey(event.target.value as SortKey)}
+              >
                 <option value="relevance">Relevansi</option>
                 <option value="price-asc">Harga termurah</option>
                 <option value="price-desc">Harga termahal</option>
@@ -87,10 +102,27 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      <section className="grid grid-3">
+      {/* Grid Produk Responsif & Konsisten */}
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 180px))",
+          gap: "12px",
+          justifyContent: "center",
+          width: "100%",
+        }}
+      >
         {visibleProducts.map((product) => {
-          const categoryName = categories.find((category) => category.id === product.categoryId)?.name ?? "Produk";
-          return <ProductCard key={product.id} product={product} categoryName={categoryName} onAddToCart={addToCart} />;
+          const categoryName =
+            categories.find((category) => category.id === product.categoryId)?.name ?? "Produk";
+          return (
+            <ProductCard
+              key={product.id}
+              product={product}
+              categoryName={categoryName}
+              onAddToCart={addToCart}
+            />
+          );
         })}
       </section>
 

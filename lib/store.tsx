@@ -95,7 +95,7 @@ interface StoreContextValue extends AppState {
   dismissCartNotice: () => void;
   registerCustomer: (data: Pick<CustomerSession, "name" | "email"> & { password: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   loginCustomer: (identity: string, password: string) => Promise<{ ok: boolean; message?: string }>;
-  requestOtp: (email: string, purpose: "REGISTER" | "PROFILE" | "RESET_PASSWORD") => Promise<{ ok: boolean; message?: string; debugCode?: string }>;
+  requestOtp: (email: string, purpose: "REGISTER" | "PROFILE" | "RESET_PASSWORD") => Promise<{ ok: boolean; message?: string; retryAfterSeconds?: number; expiresAt?: string }>;
   updateCustomerProfile: (data: { name?: string; password?: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   resetCustomerPassword: (data: { email: string; password: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   logoutCustomer: () => void;
@@ -317,7 +317,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const requestOtp = async (email: string, purpose: "REGISTER" | "PROFILE" | "RESET_PASSWORD") => {
-    try { const response = await fetch("/api/auth/otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, purpose }) }); const result = await response.json(); return response.ok ? { ok: true, debugCode: result.debugCode } : { ok: false, message: result.message }; } catch { return { ok: false, message: "Tidak dapat menghubungi layanan OTP." }; }
+    try {
+      const response = await fetch("/api/auth/otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose }),
+      });
+      const result = await response.json();
+      return response.ok
+        ? {
+            ok: true,
+            message: result.message ?? "OTP telah dikirim ke email.",
+            retryAfterSeconds: result.retryAfterSeconds,
+            expiresAt: result.expiresAt,
+          }
+        : { ok: false, message: result.message, retryAfterSeconds: result.retryAfterSeconds, expiresAt: result.expiresAt };
+    } catch {
+      return { ok: false, message: "Tidak dapat menghubungi layanan OTP." };
+    }
   };
 
   const updateCustomerProfile = async (data: { name?: string; password?: string; otp: string }) => {

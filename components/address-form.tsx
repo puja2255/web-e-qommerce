@@ -2,8 +2,8 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Crosshair, MapPin, PencilLine, Plus, ShieldCheck, X } from "lucide-react";
-import { addressSuggestions, googleMapsEmbedUrl, googleMapsUrl } from "@/lib/address-service";
+import { Crosshair, PencilLine, Plus, ShieldCheck, X } from "lucide-react";
+import { googleMapsEmbedUrl, googleMapsUrl } from "@/lib/address-service";
 import type { CustomerAddress } from "@/lib/types";
 
 type Region = { id: string; name: string };
@@ -36,7 +36,6 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
   const [label, setLabel] = useState("Rumah");
   const [recipientNameInput, setRecipientNameInput] = useState(recipientName);
   const [phoneInput, setPhoneInput] = useState(phone);
-  const [query, setQuery] = useState("");
   const [detail, setDetail] = useState("");
   const [mapsLink, setMapsLink] = useState("");
   const [provinces, setProvinces] = useState<Region[]>([]);
@@ -53,7 +52,6 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
   const province = provinces.find((item) => item.id === provinceId)?.name ?? "";
   const city = cities.find((item) => item.id === cityId)?.name ?? "";
   const district = districts.find((item) => item.id === districtId)?.name ?? "";
-  const suggestions = useMemo(() => (query.length < 2 ? [] : addressSuggestions.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())).slice(0, 5)), [query]);
   const verified = Boolean(provinceId && cityId && districtId && (position || mapsLink));
 
   useEffect(() => {
@@ -94,7 +92,6 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
     setLabel("Rumah");
     setRecipientNameInput(recipientName);
     setPhoneInput(phone);
-    setQuery("");
     setDetail("");
     setMapsLink("");
     setProvinceId("");
@@ -113,7 +110,6 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
     setPhoneInput(address.phone);
     setDetail(address.detail);
     setPostalCode(address.postalCode ?? "");
-    setQuery(address.mapsUrl ?? `${address.detail}, ${address.district}, ${address.city}, ${address.province}`);
     setMapsLink(address.mapsUrl ?? "");
     setProvinceId(provinces.find((item) => item.name === address.province)?.id ?? "");
     setCityId(cities.find((item) => item.name === address.city)?.id ?? "");
@@ -124,13 +120,6 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
         : emptyPosition,
     );
     setMessage("Alamat siap diedit.");
-  };
-
-  const chooseSuggestion = (item: typeof addressSuggestions[number]) => {
-    setQuery(item.label);
-    setPostalCode(item.postalCode);
-    setPosition({ latitude: item.latitude, longitude: item.longitude });
-    setMessage("Titik lokasi tersimpan. Pilih wilayah pada dropdown.");
   };
 
   const useGps = () => {
@@ -184,10 +173,10 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
           <div className="address-card" key={address.id}>
             <div>
               <strong>
-                {address.label} {address.isPrimary ? "· Utama" : ""}
+                {address.label} {address.isPrimary ? " - Utama" : ""}
               </strong>
               <div>
-                {address.recipientName} · {address.phone}
+                {address.recipientName} | {address.phone}
               </div>
               <div className="muted tiny">
                 {address.detail}, {address.district}, {address.city}, {address.province} {address.postalCode}
@@ -223,20 +212,6 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
           <div className="field">
             <label>Label alamat</label>
             <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>Autocomplete alamat</label>
-            <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} />
-            {suggestions.length ? (
-              <div className="address-suggestions">
-                {suggestions.map((item) => (
-                  <button type="button" key={item.label} onClick={() => chooseSuggestion(item)}>
-                    <MapPin size={14} />
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </div>
         </div>
 
