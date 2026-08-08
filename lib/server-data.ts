@@ -443,7 +443,7 @@ export async function createOrderRecord(data: {
       totalAmount,
       shippingFee,
       status: "PENDING",
-      paymentStatus: "UNPAID",
+      paymentStatus: paymentMethod?.type === "COD" ? "VERIFIED" : "UNPAID",
       items: {
         create: data.items.map((item) => ({
           productId: item.productId,

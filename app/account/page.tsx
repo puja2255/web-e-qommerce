@@ -16,7 +16,6 @@ import {
   Truck,
   Upload,
   UserRound,
-  ChevronDown,
 } from "lucide-react";
 import { AddressForm } from "@/components/address-form";
 import { useGoldenStore } from "@/lib/store";
@@ -40,6 +39,15 @@ const statusIcon: Record<OrderStatus, typeof PackageOpen> = {
   COMPLETED: PackageCheck,
   CANCELLED: Clock3,
 };
+
+type OtpPurpose = "REGISTER" | "PROFILE" | "RESET_PASSWORD";
+
+function formatOtpCountdown(remainingMs: number) {
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
 
 function Countdown({ dueAt }: { dueAt: string }) {
   const [now, setNow] = useState(() => Date.now());
@@ -69,6 +77,31 @@ function Countdown({ dueAt }: { dueAt: string }) {
   );
 }
 
+function OtpCountdown({ label, expiresAt }: { label: string; expiresAt: string | null }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [expiresAt]);
+
+  if (!expiresAt) {
+    return <span className="tiny muted">OTP belum dikirim.</span>;
+  }
+
+  const remaining = new Date(expiresAt).getTime() - now;
+  if (remaining <= 0) {
+    return <span className="tiny muted">OTP kedaluwarsa. Silakan kirim ulang.</span>;
+  }
+
+  return (
+    <span className="tiny muted">
+      {label} tersisa <strong>{formatOtpCountdown(remaining)}</strong>
+    </span>
+  );
+}
+
 function OrderCard({
   order,
   paymentMethod,
@@ -86,12 +119,12 @@ function OrderCard({
   const currentStep = STEPS.indexOf(order.status as (typeof STEPS)[number]);
   const isAwaitingPayment = order.paymentStatus === "UNPAID" && Boolean(order.paymentDueAt);
   const paymentExpired = Boolean(order.paymentDueAt && new Date(order.paymentDueAt).getTime() <= Date.now());
-  const canUploadProof = order.status !== "CANCELLED" && order.paymentStatus === "UNPAID" && !paymentExpired;
+  const canUploadProof = paymentMethod?.type !== "COD" && order.status !== "CANCELLED" && order.paymentStatus === "UNPAID" && !paymentExpired;
   const paymentSummary =
     paymentMethod?.type === "COD"
       ? "COD"
       : paymentMethod
-        ? `${paymentMethod.label}${paymentMethod.accountNumber ? ` • ${paymentMethod.accountNumber}` : ""}`
+        ? `${paymentMethod.label}${paymentMethod.accountNumber ? `  -  ${paymentMethod.accountNumber}` : ""}`
         : "Metode pembayaran tidak ditemukan";
   const [proofBusy, setProofBusy] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -136,7 +169,13 @@ function OrderCard({
         <div>
           <span className="muted tiny">Pembayaran</span>
           <strong>
-            {isAwaitingPayment ? "Menunggu pembayaran" : order.paymentStatus === "VERIFIED" ? "Terverifikasi" : "Diproses"}
+            {paymentMethod?.type === "COD"
+              ? "COD"
+              : isAwaitingPayment
+                ? "Menunggu pembayaran"
+                : order.paymentStatus === "VERIFIED"
+                  ? "Terverifikasi"
+                  : "Diproses"}
           </strong>
         </div>
       </div>
@@ -149,7 +188,7 @@ function OrderCard({
         ) : paymentMethod ? (
           <span className="tiny muted">
             {paymentMethod.accountName || paymentMethod.label}
-            {paymentMethod.details ? ` • ${paymentMethod.details}` : ""}
+            {paymentMethod.details ? `  -  ${paymentMethod.details}` : ""}
           </span>
         ) : null}
       </div>
@@ -276,10 +315,13 @@ export default function AccountPage() {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profilePassword, setProfilePassword] = useState("");
   const [profileOtp, setProfileOtp] = useState("");
+  const [otpExpiresAt, setOtpExpiresAt] = useState<Record<string, string>>({});
+  const [clock, setClock] = useState(() => Date.now());
 
   const next = typeof window === "undefined" ? "/account" : new URLSearchParams(window.location.search).get("next") || "/account";
 
@@ -296,13 +338,39 @@ export default function AccountPage() {
     return () => window.clearInterval(timer);
   }, [customerSession, refreshData]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 3200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const myOrders = useMemo(() => (customerSession ? orders.filter((order) => order.customerId === customerSession.id) : []), [customerSession, orders]);
   const paymentMethodMap = useMemo(() => new Map(paymentMethods.map((method) => [method.id, method])), [paymentMethods]);
 
-  const sendOtp = async (purpose: "REGISTER" | "PROFILE" | "RESET_PASSWORD") => {
-    const target = purpose === "PROFILE" ? customerSession?.email ?? email : email;
+  const otpTarget = (purpose: OtpPurpose) => (purpose === "PROFILE" ? customerSession?.email ?? email : email).trim().toLowerCase();
+  const otpKey = (purpose: OtpPurpose, target: string) => `${purpose}:${target}`;
+  const currentOtpExpiry = (purpose: OtpPurpose) => {
+    const target = otpTarget(purpose);
+    return otpExpiresAt[otpKey(purpose, target)] ?? null;
+  };
+  const isOtpCoolingDown = (purpose: OtpPurpose) => {
+    const expiresAt = currentOtpExpiry(purpose);
+    return Boolean(expiresAt && new Date(expiresAt).getTime() > clock);
+  };
+
+  const sendOtp = async (purpose: OtpPurpose) => {
+    const target = otpTarget(purpose);
     const result = await requestOtp(target, purpose);
-    setError(result.ok ? (result.debugCode ? `Mode lokal - OTP: ${result.debugCode}` : "OTP telah dikirim ke email.") : result.message ?? "OTP gagal dikirim.");
+    setToast(result.ok ? result.message ?? "OTP telah dikirim ke email." : result.message ?? "OTP gagal dikirim.");
+    if (result.ok || result.retryAfterSeconds) {
+      const expiresAt = result.expiresAt ?? new Date(Date.now() + (result.retryAfterSeconds ?? 300) * 1000).toISOString();
+      setOtpExpiresAt((current) => ({ ...current, [otpKey(purpose, target)]: expiresAt }));
+    }
   };
 
   const submitAuth = async (event: FormEvent) => {
@@ -399,11 +467,22 @@ export default function AccountPage() {
           {mode !== "login" ? (
             <div className="field">
               <label>OTP email</label>
-              <div className="row-actions">
-                <input className="input" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={6} required />
-                <button className="button-outline" type="button" onClick={() => void sendOtp(mode === "register" ? "REGISTER" : "RESET_PASSWORD")}>
-                  Kirim OTP
-                </button>
+              <div className="stack" style={{ gap: 10 }}>
+                <div className="row-actions">
+                  <input className="input" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={6} required />
+                  <button
+                    className="button-outline"
+                    type="button"
+                    disabled={isOtpCoolingDown(mode === "register" ? "REGISTER" : "RESET_PASSWORD")}
+                    onClick={() => void sendOtp(mode === "register" ? "REGISTER" : "RESET_PASSWORD")}
+                  >
+                    {isOtpCoolingDown(mode === "register" ? "REGISTER" : "RESET_PASSWORD") ? "OTP aktif" : "Kirim OTP"}
+                  </button>
+                </div>
+                <OtpCountdown
+                  label="Timer OTP"
+                  expiresAt={currentOtpExpiry(mode === "register" ? "REGISTER" : "RESET_PASSWORD")}
+                />
               </div>
             </div>
           ) : null}
@@ -421,6 +500,11 @@ export default function AccountPage() {
 
   return (
     <div className="stack account-page">
+      {toast ? (
+        <div className="toast-notice" role="status" aria-live="polite">
+          {toast}
+        </div>
+      ) : null}
       <section className="account-hero panel">
         <div className="account-hero__main">
           {/* Badge Akun Saya */}
@@ -429,61 +513,42 @@ export default function AccountPage() {
             Akun Saya
           </div>
 
-          {/* Dropdown Navigasi */}
           <div className="account-nav" style={{ marginTop: "12px", width: "100%", maxWidth: "220px" }}>
-            <div style={{ position: "relative", width: "100%" }}>
-              <select
-                id="account-nav"
-                className="select"
-                value={tab}
-                onChange={(event) => setTab(event.target.value as typeof tab)}
-                style={{
-                  width: "100%",
-                  padding: "10px 38px 10px 14px",
-                  borderRadius: "14px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  color: "var(--text)",
-                  border: "1px solid var(--line)",
-                  appearance: "none",
-                  WebkitAppearance: "none",
-                  fontSize: "0.88rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  outline: "none",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-                  backdropFilter: "blur(10px)",
-                }}
-              >
-                <option value="profile" style={{ background: "#1e1710", color: "#f7f0dd" }}>
-                   Profil Saya
-                </option>
-                <option value="addresses" style={{ background: "#1e1710", color: "#f7f0dd" }}>
-                   Alamat Saya
-                </option>
-                <option value="orders" style={{ background: "#1e1710", color: "#f7f0dd" }}>
-                   Pesanan Saya
-                </option>
-              </select>
-              
-              {/* Panah Dropdown Custom */}
-              <ChevronDown
-                size={16}
-                style={{
-                  position: "absolute",
-                  right: "14px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  pointerEvents: "none",
-                  color: "var(--gold)",
-                }}
-              />
-            </div>
+            <select
+              id="account-nav"
+              className="select"
+              value={tab}
+              onChange={(event) => setTab(event.target.value as typeof tab)}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: "14px",
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "var(--text)",
+                border: "1px solid var(--line)",
+                fontSize: "0.88rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                outline: "none",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <option value="profile" style={{ background: "#1e1710", color: "#f7f0dd" }}>
+                Profil Saya
+              </option>
+              <option value="addresses" style={{ background: "#1e1710", color: "#f7f0dd" }}>
+                Alamat Saya
+              </option>
+              <option value="orders" style={{ background: "#1e1710", color: "#f7f0dd" }}>
+                Pesanan Saya
+              </option>
+            </select>
           </div>
 
-          {/* Greeting & Info */}
           <h1 style={{ marginTop: "16px" }}>Halo, {customerSession.name.split(" ")[0]}!</h1>
           <p>
-            {customerSession.email} · {customerSession.phone}
+            {customerSession.email}  |  {customerSession.phone}
           </p>
         </div>
 
@@ -513,7 +578,7 @@ export default function AccountPage() {
             </div>
             <h2>{customerSession.name}</h2>
             <p className="muted">
-              {customerSession.email} · {customerSession.phone}
+              {customerSession.email}  |  {customerSession.phone}
             </p>
           </div>
 
@@ -550,11 +615,19 @@ export default function AccountPage() {
             </div>
             <div className="field">
               <label>OTP email</label>
-              <div className="row-actions">
-                <input className="input" value={profileOtp} onChange={(event) => setProfileOtp(event.target.value)} maxLength={6} required />
-                <button className="button-outline" type="button" onClick={() => void sendOtp("PROFILE")}>
-                  Kirim OTP
-                </button>
+              <div className="stack" style={{ gap: 10 }}>
+                <div className="row-actions">
+                  <input className="input" value={profileOtp} onChange={(event) => setProfileOtp(event.target.value)} maxLength={6} required />
+                  <button
+                    className="button-outline"
+                    type="button"
+                    disabled={isOtpCoolingDown("PROFILE")}
+                    onClick={() => void sendOtp("PROFILE")}
+                  >
+                    {isOtpCoolingDown("PROFILE") ? "OTP aktif" : "Kirim OTP"}
+                  </button>
+                </div>
+                <OtpCountdown label="Timer OTP" expiresAt={currentOtpExpiry("PROFILE")} />
               </div>
             </div>
             <button className="button" type="submit">
@@ -619,3 +692,4 @@ export default function AccountPage() {
     </div>
   );
 }
+
