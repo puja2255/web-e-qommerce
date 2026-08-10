@@ -152,19 +152,33 @@ img {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: 0.02em;
+  color: var(--text);
+  text-decoration: none;
 }
 
 .brand-mark {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  color: #241900;
-  background: linear-gradient(135deg, #f7dd7f, #c79200);
-  box-shadow: 0 12px 24px rgba(199, 146, 0, 0.32);
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 18px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.brand-mark-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brand span:last-child {
+  font-size: 1.1rem;
 }
 
 .nav-links {

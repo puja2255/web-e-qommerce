@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { MessageCircleMore, ShoppingBag, Store, UserRound, X } from "lucide-react";
+import { MessageCircleMore, ShoppingBag, UserRound, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { adminWhatsappLink } from "@/lib/contact";
@@ -47,7 +48,7 @@ export function SiteHeader() {
         <div className="topbar-inner">
           <Link href="/" className="brand" aria-label="Golden Store">
             <span className="brand-mark">
-              <Store size={20} />
+              <Image src="/logo.png" alt="Golden Store" width={56} height={56} className="brand-mark-image" />
             </span>
             <span>Golden Store</span>
           </Link>
