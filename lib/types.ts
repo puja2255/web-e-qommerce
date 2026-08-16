@@ -54,6 +54,8 @@ export interface Review {
   customerName: string;
   rating: number;
   comment: string;
+  images: string[];
+  videos: string[];
   createdAt: string;
 }
 
@@ -68,12 +70,14 @@ export interface CartItem {
 }
 
 export interface OrderItem {
+  id: string;
   productId: string;
   productName: string;
   unitPrice: number;
   quantity: number;
   subtotal: number;
   image: string;
+  review?: Review | null;
 }
 
 export interface Order {

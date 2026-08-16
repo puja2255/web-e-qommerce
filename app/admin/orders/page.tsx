@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, MessageCircle, PackageSearch, Search, SlidersHorizontal, X } from "lucide-react";
+import { CalendarDays, Download, MessageCircle, PackageSearch, Search, SlidersHorizontal, X } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { useGoldenStore } from "@/lib/store";
-import { formatCurrency, orderStatusLabel, paymentStatusLabel, shortDate, whatsappLink } from "@/lib/utils";
+import { downloadCsv, formatCurrency, orderStatusLabel, paymentStatusLabel, shortDate, whatsappLink } from "@/lib/utils";
 
 const statusOptions = ["PENDING", "CONFIRMED", "PACKED", "SHIPPED", "COMPLETED", "CANCELLED"] as const;
 
@@ -71,6 +71,48 @@ export default function AdminOrdersPage() {
     });
   }, [orders, query, startDate, endDate, monthFilter, yearFilter, productFilter, categoryFilter, productMap]);
 
+  const exportOrdersExcel = () => {
+    const kop = [
+      ["PT GOLDEN IB - LAPORAN RIWAYAT PENJUALAN"],
+      ["Alamat: Ruko Golden Blok A No. 10, Jakarta"],
+      ["WhatsApp: +62 812-9876-5432"],
+      [""],
+      ["FILTER AKTIF:"],
+      ["Pencarian", query || "Semua"],
+      ["Dari Tanggal", startDate || "-"],
+      ["Sampai Tanggal", endDate || "-"],
+      ["Bulan", monthFilter ? new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2026, Number(monthFilter) - 1, 1)) : "Semua"],
+      ["Tahun", yearFilter || "Semua"],
+      ["Produk ID/Nama", productFilter ? (productMap.get(productFilter)?.name || productFilter) : "Semua"],
+      ["Kategori ID", categoryFilter ? (categories.find(c => c.id === categoryFilter)?.name || categoryFilter) : "Semua"],
+      [""],
+      ["Kode Pesanan", "Nama Barang", "Nama Pembeli", "Tanggal Beli", "Harga Satuan", "Qty", "Subtotal", "No WA", "Status Pesanan"]
+    ];
+
+    const dataRows: string[][] = [];
+    visibleOrders.forEach((order) => {
+      const dateStr = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(order.createdAt));
+      const statusStr = order.status === "CANCELLED" ? "Batal" : "Berhasil";
+      
+      order.items.forEach((item) => {
+        dataRows.push([
+          order.orderNumber,
+          item.productName,
+          order.customerName,
+          dateStr,
+          String(item.unitPrice),
+          String(item.quantity),
+          String(item.subtotal),
+          order.customerPhone,
+          statusStr
+        ]);
+      });
+    });
+
+    const rows = [...kop, ...dataRows];
+    downloadCsv(`laporan-penjualan-riwayat-${Date.now()}.csv`, rows);
+  };
+
   const selectedOrder = useMemo(
     () => orders.find((order) => order.id === selectedOrderId) ?? null,
     [orders, selectedOrderId],
@@ -98,10 +140,16 @@ export default function AdminOrdersPage() {
         </div>
         <div className="row-actions" style={{ justifyContent: "space-between", marginTop: 16 }}>
           <div className="muted tiny">Gunakan popup filter untuk mempersempit riwayat pesanan.</div>
-          <button className="button-outline" type="button" onClick={() => setShowFilters(true)}>
-            <SlidersHorizontal size={16} />
-            Filter
-          </button>
+          <div className="row-actions" style={{ gap: 10, marginTop: 0 }}>
+            <button className="button-outline" type="button" onClick={() => setShowFilters(true)}>
+              <SlidersHorizontal size={16} />
+              Filter
+            </button>
+            <button className="button" type="button" onClick={exportOrdersExcel}>
+              <Download size={16} />
+              Export Excel
+            </button>
+          </div>
         </div>
       </section>
 
@@ -158,17 +206,23 @@ export default function AdminOrdersPage() {
                     </td>
                     <td>
                       <div className="stack" style={{ gap: 8 }}>
-                        <select
-                          className="select"
-                          value={order.status}
-                          onChange={(event) => updateOrderStatus(order.id, event.target.value as (typeof statusOptions)[number])}
-                        >
-                          {statusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {orderStatusLabel(status)}
-                            </option>
-                          ))}
-                        </select>
+                        {order.status === "COMPLETED" || order.status === "CANCELLED" ? (
+                          <span className="tiny muted" style={{ fontWeight: 600, padding: "6px 12px", border: "1px dashed var(--line)", borderRadius: "8px", textAlign: "center" }}>Status Final</span>
+                        ) : (
+                          <select
+                            className="select"
+                            value={order.status}
+                            onChange={(event) => updateOrderStatus(order.id, event.target.value as any)}
+                          >
+                            {statusOptions
+                              .filter((opt) => opt !== "COMPLETED")
+                              .map((status) => (
+                                <option key={status} value={status}>
+                                  {orderStatusLabel(status)}
+                                </option>
+                              ))}
+                          </select>
+                        )}
                         <a
                           className="button-outline"
                           href={whatsappLink(

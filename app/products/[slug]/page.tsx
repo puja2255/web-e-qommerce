@@ -179,6 +179,22 @@ export default function ProductDetailPage() {
                   ))}
                 </div>
                 <p>{review.comment}</p>
+                {review.images && review.images.length > 0 ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                    {review.images.map((imgUrl, idx) => (
+                      <a href={imgUrl} target="_blank" rel="noreferrer" key={idx}>
+                        <img src={imgUrl} alt="Review Media" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)" }} />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+                {review.videos && review.videos.length > 0 ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                    {review.videos.map((vidUrl, idx) => (
+                      <video src={vidUrl} controls key={idx} style={{ width: 140, height: 80, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)" }} />
+                    ))}
+                  </div>
+                ) : null}
               </article>
             ))}
           </div>

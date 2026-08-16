@@ -2,14 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/customer-auth";
 
-function serializeReview(review: {
-  id: string;
-  productId: string;
-  customerName: string;
-  rating: number;
-  comment: string;
-  createdAt: Date;
-}) {
+function serializeReview(review: any) {
   return { ...review, createdAt: review.createdAt.toISOString() };
 }
 
@@ -39,6 +32,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const rating = Number(body.rating);
   const comment = typeof body.comment === "string" ? body.comment.trim() : "";
   const orderNumber = typeof body.orderNumber === "string" ? body.orderNumber.trim() : "";
+  const images = Array.isArray(body.images) ? body.images : [];
+  const videos = Array.isArray(body.videos) ? body.videos : [];
 
   if (!Number.isInteger(rating) || rating < 1 || rating > 5 || comment.length < 3 || comment.length > 1000) {
     return NextResponse.json({ message: "Rating harus 1-5 bintang dan ulasan 3-1000 karakter." }, { status: 400 });
@@ -72,6 +67,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         customerName: customer.name,
         rating,
         comment,
+        images,
+        videos,
       },
     });
     const aggregate = await tx.review.aggregate({

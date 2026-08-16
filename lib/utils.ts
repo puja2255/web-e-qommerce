@@ -137,6 +137,20 @@ export function topProductsFromOrders(orders: Order[]) {
     .slice(0, 5);
 }
 
+export function serializeCsv(rows: string[][], delimiter = ";") {
+  return rows
+    .map((row) =>
+      row
+        .map((cell) => {
+          const value = String(cell ?? "");
+          const escaped = value.replace(/"/g, '""');
+          return /[;"\r\n]/.test(value) ? `"${escaped}"` : escaped;
+        })
+        .join(delimiter),
+    )
+    .join("\r\n");
+}
+
 export function downloadTextFile(filename: string, content: string, mimeType = "text/plain") {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -148,8 +162,8 @@ export function downloadTextFile(filename: string, content: string, mimeType = "
 }
 
 export function downloadCsv(filename: string, rows: string[][]) {
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
-  downloadTextFile(filename, csv, "text/csv;charset=utf-8");
+  const csv = serializeCsv(rows, ";");
+  downloadTextFile(filename, `\uFEFF${csv}`, "text/csv;charset=utf-8;");
 }
 
 export function whatsappLink(phone: string, message: string) {

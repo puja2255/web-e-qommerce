@@ -53,6 +53,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     include: {
       items: {
         orderBy: { id: "asc" },
+        include: {
+          review: true
+        }
       },
     },
   });

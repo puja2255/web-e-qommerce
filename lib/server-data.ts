@@ -129,12 +129,14 @@ function mapOrder(order: {
   paymentDueAt: Date | null;
   createdAt: Date;
   items: Array<{
+    id: string;
     productId: string;
     productName: string;
     unitPrice: number;
     quantity: number;
     subtotal: number;
     imageUrl: string;
+    review?: any | null;
   }>;
 }): Order {
   return {
@@ -155,12 +157,23 @@ function mapOrder(order: {
     customerId: order.customerId ?? undefined,
     paymentDueAt: order.paymentDueAt?.toISOString(),
     items: order.items.map((item) => ({
+      id: item.id,
       productId: item.productId,
       productName: item.productName,
       unitPrice: item.unitPrice,
       quantity: item.quantity,
       subtotal: item.subtotal,
       image: item.imageUrl,
+      review: item.review ? {
+        id: item.review.id,
+        productId: item.review.productId,
+        customerName: item.review.customerName,
+        rating: item.review.rating,
+        comment: item.review.comment,
+        images: item.review.images,
+        videos: item.review.videos,
+        createdAt: item.review.createdAt.toISOString(),
+      } : null,
     })),
     createdAt: order.createdAt.toISOString(),
   };
@@ -185,6 +198,9 @@ async function queryState(): Promise<Pick<AppState, "categories" | "paymentMetho
       include: {
         items: {
           orderBy: { id: "asc" },
+          include: {
+            review: true
+          }
         },
       },
     }),
@@ -458,6 +474,9 @@ export async function createOrderRecord(data: {
     include: {
       items: {
         orderBy: { id: "asc" },
+        include: {
+          review: true
+        }
       },
     },
   });

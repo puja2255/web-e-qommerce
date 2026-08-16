@@ -128,22 +128,143 @@ function OrderCard({
         : "Metode pembayaran tidak ditemukan";
   const [proofBusy, setProofBusy] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [mediaTypes, setMediaTypes] = useState<Record<string, "image" | "video">>({});
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
-  const submitReview = async (productId: string) => {
-    const response = await fetch(`/api/products/${productId}/reviews`, {
-      method: "POST",
+  const { refreshData } = useGoldenStore();
+
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingMedia(true);
+    const newUrls: string[] = [];
+    const newTypes = { ...mediaTypes };
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+
+      if (!isImage && !isVideo) {
+        alert(`Format file ${file.name} tidak didukung. Pilih foto atau video.`);
+        continue;
+      }
+
+      if (isImage && file.size > 5 * 1024 * 1024) {
+        alert(`Ukuran foto ${file.name} melebihi 5 MB.`);
+        continue;
+      }
+
+      if (isVideo && file.size > 20 * 1024 * 1024) {
+        alert(`Ukuran video ${file.name} melebihi 20 MB.`);
+        continue;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/uploads", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (res.ok && data.url) {
+          newUrls.push(data.url);
+          newTypes[data.url] = isImage ? "image" : "video";
+        } else {
+          alert(data.message || `Gagal mengunggah ${file.name}`);
+        }
+      } catch {
+        alert(`Gagal mengunggah ${file.name}`);
+      }
+    }
+
+    setMediaUrls((prev) => [...prev, ...newUrls]);
+    setMediaTypes(newTypes);
+    setUploadingMedia(false);
+  };
+
+  const removeUploadedMedia = (url: string) => {
+    setMediaUrls((prev) => prev.filter((item) => item !== url));
+    setMediaTypes((prev) => {
+      const copy = { ...prev };
+      delete copy[url];
+      return copy;
+    });
+  };
+
+  const submitReview = async (productId: string, reviewId?: string | null) => {
+    const images = mediaUrls.filter((url) => mediaTypes[url] === "image");
+    const videos = mediaUrls.filter((url) => mediaTypes[url] === "video");
+
+    const endpoint = reviewId ? `/api/reviews/${reviewId}` : `/api/products/${productId}/reviews`;
+    const method = reviewId ? "PUT" : "POST";
+
+    const response = await fetch(endpoint, {
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderNumber: order.orderNumber, rating, comment }),
+      body: JSON.stringify({
+        orderNumber: order.orderNumber,
+        rating,
+        comment,
+        images,
+        videos,
+      }),
     });
     const result = await response.json();
-    setFeedback(response.ok ? "Ulasan terkirim. Terima kasih!" : result.message ?? "Ulasan gagal dikirim.");
+    setFeedback(response.ok ? "Ulasan berhasil dikirim!" : result.message ?? "Ulasan gagal dikirim.");
     if (response.ok) {
       setReviewing(null);
+      setEditingReviewId(null);
       setComment("");
+      setMediaUrls([]);
+      setMediaTypes({});
+      void refreshData();
     }
+  };
+
+  const deleteReview = async (reviewId: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus ulasan ini?")) return;
+    const response = await fetch(`/api/reviews/${reviewId}`, {
+      method: "DELETE",
+    });
+    const result = await response.json();
+    setFeedback(response.ok ? "Ulasan berhasil dihapus." : result.message ?? "Ulasan gagal dihapus.");
+    if (response.ok) {
+      void refreshData();
+    }
+  };
+
+  const startEditReview = (item: any) => {
+    const rev = item.review;
+    if (!rev) return;
+    setReviewing(item.productId);
+    setEditingReviewId(rev.id);
+    setRating(rev.rating);
+    setComment(rev.comment);
+    setFeedback("");
+
+    const urls = [...(rev.images || []), ...(rev.videos || [])];
+    const types: Record<string, "image" | "video"> = {};
+    (rev.images || []).forEach((u: string) => { types[u] = "image"; });
+    (rev.videos || []).forEach((u: string) => { types[u] = "video"; });
+
+    setMediaUrls(urls);
+    setMediaTypes(types);
+  };
+
+  const cancelReview = () => {
+    setReviewing(null);
+    setEditingReviewId(null);
+    setComment("");
+    setMediaUrls([]);
+    setMediaTypes({});
+    setFeedback("");
   };
 
   return (
@@ -171,11 +292,15 @@ function OrderCard({
           <strong>
             {paymentMethod?.type === "COD"
               ? "COD"
-              : isAwaitingPayment
-                ? "Menunggu pembayaran"
+              : order.paymentStatus === "PAID"
+                ? "Sudah Bayar (Menunggu Verifikasi)"
                 : order.paymentStatus === "VERIFIED"
                   ? "Terverifikasi"
-                  : "Diproses"}
+                  : order.paymentStatus === "REFUNDED"
+                    ? "Refund / Dikembalikan"
+                    : isAwaitingPayment
+                      ? "Menunggu pembayaran"
+                      : "Belum Bayar"}
           </strong>
         </div>
       </div>
@@ -249,38 +374,132 @@ function OrderCard({
 
       {order.status === "COMPLETED" ? (
         <div className="stack" style={{ marginTop: 16, gap: 8 }}>
-          <strong>Beri ulasan produk</strong>
-          {order.items.map((item) => (
-            <div className="muted-box" key={item.productId}>
-              <strong>{item.productName}</strong>
-              {reviewing === item.productId ? (
-                <div className="stack" style={{ marginTop: 8, gap: 8 }}>
-                  <select className="select" value={rating} onChange={(e) => setRating(Number(e.target.value))}>
-                    {[5, 4, 3, 2, 1].map((value) => (
-                      <option value={value} key={value}>
-                        {value} bintang
-                      </option>
-                    ))}
-                  </select>
-                  <textarea className="textarea" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Tulis ulasan minimal 3 karakter" />
-                  <div className="row-actions">
-                    <button className="button" type="button" onClick={() => void submitReview(item.productId)}>
-                      <Star size={16} />
-                      Kirim ulasan
-                    </button>
-                    <button className="button-ghost" type="button" onClick={() => setReviewing(null)}>
-                      Batal
-                    </button>
+          <strong>Ulasan produk</strong>
+          {order.items.map((item) => {
+            const hasReview = !!item.review;
+            const isThisReviewing = reviewing === item.productId;
+
+            return (
+              <div className="muted-box" key={item.productId} style={{ display: "grid", gap: 6 }}>
+                <strong>{item.productName}</strong>
+
+                {isThisReviewing ? (
+                  <div className="stack" style={{ marginTop: 8, gap: 8 }}>
+                    <select className="select" value={rating} onChange={(e) => setRating(Number(e.target.value))}>
+                      {[5, 4, 3, 2, 1].map((value) => (
+                        <option value={value} key={value}>
+                          {value} bintang
+                        </option>
+                      ))}
+                    </select>
+                    <textarea className="textarea" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Tulis ulasan minimal 3 karakter" />
+                    
+                    {/* Media Upload */}
+                    <div className="stack" style={{ gap: 6 }}>
+                      <label className="button-outline" style={{ display: "inline-flex", width: "fit-content", cursor: "pointer" }}>
+                        <Upload size={16} />
+                        {uploadingMedia ? "Mengunggah..." : "Unggah Foto / Video"}
+                        <input type="file" multiple accept="image/*,video/*" hidden onChange={handleMediaUpload} disabled={uploadingMedia} />
+                      </label>
+                      <span className="tiny muted">Maksimal ukuran foto 5MB dan video 20MB.</span>
+
+                      {mediaUrls.length > 0 ? (
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                          {mediaUrls.map((url) => (
+                            <div key={url} style={{ position: "relative", width: 80, height: 80, border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
+                              {mediaTypes[url] === "image" ? (
+                                <img src={url} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              ) : (
+                                <video src={url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removeUploadedMedia(url)}
+                                style={{
+                                  position: "absolute",
+                                  top: 2,
+                                  right: 2,
+                                  background: "rgba(0,0,0,0.6)",
+                                  color: "#fff",
+                                  border: "none",
+                                  borderRadius: "50%",
+                                  width: 18,
+                                  height: 18,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 10,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                x
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="row-actions">
+                      <button className="button" type="button" onClick={() => void submitReview(item.productId, editingReviewId)}>
+                        <Star size={16} />
+                        {editingReviewId ? "Simpan Perubahan" : "Kirim ulasan"}
+                      </button>
+                      <button className="button-ghost" type="button" onClick={cancelReview}>
+                        Batal
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <button className="button-outline" type="button" style={{ marginTop: 8 }} onClick={() => { setReviewing(item.productId); setFeedback(""); }}>
-                  <Star size={16} />
-                  Beri ulasan
-                </button>
-              )}
-            </div>
-          ))}
+                ) : hasReview && item.review ? (
+                  <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
+                    <div className="nav-links" style={{ justifyContent: "space-between" }}>
+                      <div className="review-stars" aria-label={`${item.review.rating} dari 5 bintang`}>
+                        {Array.from({ length: 5 }, (_, idx) => (
+                          <Star key={idx} size={13} fill={idx < item.review!.rating ? "currentColor" : "none"} />
+                        ))}
+                      </div>
+                      <span className="tiny muted">{shortDate(item.review.createdAt)}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.93rem" }}>{item.review.comment}</p>
+                    
+                    {/* Media Display */}
+                    {item.review.images && item.review.images.length > 0 ? (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                        {item.review.images.map((imgUrl: string, idx: number) => (
+                          <a href={imgUrl} target="_blank" rel="noreferrer" key={idx}>
+                            <img src={imgUrl} alt="Review Media" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)" }} />
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {item.review.videos && item.review.videos.length > 0 ? (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                        {item.review.videos.map((vidUrl: string, idx: number) => (
+                          <video src={vidUrl} controls key={idx} style={{ width: 100, height: 60, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)" }} />
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className="row-actions" style={{ marginTop: 6 }}>
+                      <button className="button-ghost" type="button" style={{ paddingInline: 0, fontSize: "0.8rem", display: "inline-flex", gap: 4 }} onClick={() => startEditReview(item)}>
+                        <PencilLine size={13} />
+                        Edit ulasan
+                      </button>
+                      <button className="button-ghost" type="button" style={{ paddingInline: 0, fontSize: "0.8rem", color: "var(--danger)", display: "inline-flex", gap: 4 }} onClick={() => void deleteReview(item.review!.id)}>
+                        Hapus ulasan
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="button-outline" type="button" style={{ marginTop: 8 }} onClick={() => { setReviewing(item.productId); setFeedback(""); }}>
+                    <Star size={16} />
+                    Beri ulasan
+                  </button>
+                )}
+              </div>
+            );
+          })}
           {feedback ? <span className="muted tiny">{feedback}</span> : null}
         </div>
       ) : null}

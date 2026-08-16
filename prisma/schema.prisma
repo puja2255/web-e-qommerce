@@ -165,6 +165,8 @@ model Review {
   customerName String
   rating      Int
   comment     String
+  images      String[]  @default([])
+  videos      String[]  @default([])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

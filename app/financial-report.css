@@ -1,0 +1,214 @@
+/* Financial Report Styling */
+
+.financial-report-header {
+  background: linear-gradient(135deg, rgba(241, 198, 74, 0.12), rgba(241, 198, 74, 0.02));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.financial-report-header__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.financial-report-header__logo-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.financial-report-header__logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  object-fit: contain;
+  background: rgba(241, 198, 74, 0.06);
+  padding: 4px;
+}
+
+.financial-report-header__company {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.financial-report-header__company-name {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+
+.financial-report-header__company-subtitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.financial-report-header__company-date {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.financial-report-header__print-info {
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.financial-report__note {
+  padding: 12px;
+  border-left: 3px solid var(--gold);
+  background: rgba(241, 198, 74, 0.06);
+  border-radius: 8px;
+}
+
+.financial-report-formulas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.formula-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 200ms ease;
+}
+
+.formula-card:hover {
+  background: rgba(241, 198, 74, 0.06);
+  border-color: var(--gold-soft);
+}
+
+.formula-card.highlight {
+  border: 2px solid var(--gold);
+  background: rgba(241, 198, 74, 0.1);
+}
+
+.formula-title {
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.formula-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formula-line {
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.formula-example {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+@media (max-width: 700px) {
+  .financial-report-header__top {
+    flex-direction: column;
+  }
+
+  .financial-report-header__logo {
+    width: 60px;
+    height: 60px;
+  }
+
+  .financial-report-header__company-name {
+    font-size: 1.1rem;
+  }
+
+  .financial-report-header__print-info {
+    text-align: left;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .row-actions,
+  .modal-backdrop,
+  .chart,
+  .financial-report__note,
+  .financial-report-formulas,
+  .grid.grid-2 {
+    display: none !important;
+  }
+
+  .financial-report-header {
+    background: white !important;
+    border: none !important;
+    border-bottom: 3px solid black !important;
+    border-radius: 0 !important;
+    padding: 0 0 20px 0 !important;
+    margin-bottom: 30px !important;
+  }
+
+  .financial-report-header__top {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .financial-report-header__logo {
+    width: 90px !important;
+    height: 90px !important;
+    border: none !important;
+    background: white !important;
+  }
+
+  .financial-report-header__company-name {
+    font-size: 24px !important;
+    font-weight: 900 !important;
+  }
+
+  .financial-report-header__company-subtitle {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+  }
+
+  .financial-report__table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .financial-report__table th,
+  .financial-report__table td {
+    border: 1px solid black !important;
+    padding: 10px !important;
+    color: black !important;
+  }
+
+  .panel {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .financial-report-print {
+    page-break-inside: avoid;
+  }
+}

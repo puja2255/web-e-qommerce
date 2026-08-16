@@ -2,11 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { Download, FileText, Printer, SlidersHorizontal, X } from "lucide-react";
-import logoImage from "@/image/logo.png";
 import { AdminShell } from "@/components/admin-shell";
 import { buildMonthlyFinancialReport } from "@/lib/financial-report";
 import { useGoldenStore } from "@/lib/store";
-import { createMonthlySeries, formatCurrency, topProductsFromOrders } from "@/lib/utils";
+import { createMonthlySeries, downloadCsv, formatCurrency, topProductsFromOrders } from "@/lib/utils";
 
 export default function AdminReportsPage() {
   const { orders, products, categories } = useGoldenStore();
@@ -70,30 +69,44 @@ export default function AdminReportsPage() {
   const financialReport = useMemo(() => buildMonthlyFinancialReport(filteredOrders), [filteredOrders]);
   const totalOperationalCost = financialReport.reduce((sum, item) => sum + item.operationalCost, 0);
   const totalNetProfit = financialReport.reduce((sum, item) => sum + item.labaBersih, 0);
-  const reportPeriod =
-    startDate || endDate
-      ? `${startDate || "Awal data"} s.d. ${endDate || "Akhir data"}`
-      : monthFilter || yearFilter
-        ? `${monthFilter ? new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2026, Number(monthFilter) - 1, 1)) : "Semua bulan"}${yearFilter ? ` ${yearFilter}` : ""}`
-        : "Seluruh periode";
-  const printedAt = new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short" }).format(new Date());
 
-  const exportExcel = () => {
-    const number = (value: number) => new Intl.NumberFormat("id-ID").format(value);
-    const rows = financialReport.map(
-      (item) => `<tr><td>${item.label}</td><td>${number(item.revenue)}</td><td>${number(item.shippingFee)}</td><td>${number(item.labaBersih)}</td><td>${item.successfulOrders}</td><td>${item.cancelledOrders}</td><td>${item.totalOrders}</td></tr>`,
-    ).join("");
-    const workbook = `<!doctype html><html><head><meta charset="utf-8"><style>
-      body { font-family: Arial, sans-serif; color: #111; } table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #222; padding: 8px; } .no-border td { border: 0; } .logo { width: 70px; height: 70px; object-fit: contain; } .company { font-size: 18pt; font-weight: bold; } .title { text-align: center; font-size: 15pt; font-weight: bold; } .subtitle { text-align: center; } th, .total td { background: #e9e9e9; font-weight: bold; } .right { text-align: right; }
-    </style></head><body><table class="no-border"><tr><td><div class="company">PT GOLDEN IB</div><div>Jl. Contoh No. 123, Bandar Lampung, Lampung</div><div>Telepon: (0721) 123456 | Email: info@ptgoldenib.co.id</div></td></tr></table><hr/><p class="title">LAPORAN LABA RUGI</p><p class="subtitle">Periode Laporan: <b>${reportPeriod}</b><br/>Tanggal Cetak: <b>${printedAt}</b></p><table><thead><tr><th>Periode</th><th>Pendapatan</th><th>Biaya Pengiriman</th><th>Laba Bersih</th><th>Order Berhasil</th><th>Order Batal</th><th>Total Order</th></tr></thead><tbody>${rows || "<tr><td colspan=\"7\">Belum ada data laporan keuangan untuk periode ini.</td></tr>"}</tbody><tfoot><tr class="total"><td>Total</td><td>${number(revenue)}</td><td>${number(totalOperationalCost)}</td><td>${number(totalNetProfit)}</td><td>${successfulOrders.length}</td><td>${failedOrders.length}</td><td>${filteredOrders.length}</td></tr></tfoot></table><br/><table class="no-border"><tr><td>Mengetahui,</td></tr><tr><td style="text-align:center; width:50%">Direktur Utama<br/><br/><br/>( .................................... )</td><td style="text-align:center; width:50%">Bagian Keuangan<br/><br/><br/>( .................................... )</td></tr></table></body></html>`;
-    const blob = new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "laporan-laba-rugi-pt-golden-ib.xls";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+const exportExcel = () => {
+  const rows = [
+    ["PT GOLDEN IB INDONESIA"],
+    ["Jl. Contoh No. 123, Bandar Lampung"],
+    ["Telp: (0721) 123456"],
+    [],
+    ["LAPORAN KEUANGAN BULANAN"],
+    [`Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`],
+    [],
+    [
+      "Periode",
+      "Pendapatan",
+      "Biaya Pengiriman",
+      "Laba Bersih",
+      "Order Berhasil",
+      "Order Batal",
+      "Total Order",
+    ],
+    ...financialReport.map((item) => [
+      item.label,
+      String(item.revenue),
+      String(item.shippingFee),
+      String(item.labaBersih),
+      String(item.successfulOrders),
+      String(item.cancelledOrders),
+      String(item.totalOrders),
+    ]),
+    [],
+    ["Mengetahui"],
+    [],
+    ["Direktur Utama", "", "", "", "", "Bagian Keuangan"],
+    [],
+    ["(................)", "", "", "", "", "(................)"],
+  ];
+
+  downloadCsv("laporan-keuangan-pt-golden-ib.csv", rows);
+};
 
   const exportPdf = () => {
     window.print();
@@ -102,7 +115,7 @@ export default function AdminReportsPage() {
   return (
     <AdminShell
       title="Laporan Keuangan PT Golden IB"
-      description="Pembukuan bulanan perusahaan: pendapatan, biaya operasional, laba bersih, dan ringkasan transaksi per periode."
+      description="Pembukuan bulanan perusahaan: pendapatan, biaya pengiriman, laba bersih, dan ringkasan transaksi per periode."
       action={
         <div className="row-actions">
           <button className="button-outline" type="button" onClick={() => setShowFilters(true)}>
@@ -120,48 +133,108 @@ export default function AdminReportsPage() {
         </div>
       }
     >
-      <section className="panel financial-report-print">
-        <div className="financial-report__header">
-          <div className="financial-report__brand">
-            <img src={logoImage.src} alt="PT Golden IB" className="financial-report__logo" />
-            <div>
-              <div className="eyebrow">PT Golden IB</div>
-              <strong className="financial-report__title">Laporan Keuangan Bulanan</strong>
+      <section className="financial-report-header">
+        <div className="financial-report-header__top">
+          <div className="financial-report-header__logo-section">
+            <img src="/logo.png" alt="PT Golden IB" className="financial-report-header__logo" />
+            <div className="financial-report-header__company">
+              <div className="financial-report-header__company-name">PT GOLDEN IB</div>
+              <div className="financial-report-header__company-subtitle">Laporan Keuangan Bulanan</div>
+              <div className="financial-report-header__company-date">
+                Periode: {startDate && endDate ? `${startDate} - ${endDate}` : "Semua Data"}
+              </div>
             </div>
           </div>
-          <div className="financial-report__meta">
-            <div>Periode: {startDate || "-"} s.d. {endDate || "-"}</div>
-            <div>Dicetak: {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date())}</div>
+          <div className="financial-report-header__print-info">
+            <div>Dicetak: {new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short" }).format(new Date())}</div>
+            <div style={{ fontSize: "0.75rem", marginTop: "4px" }}>Dokumen resmi PT Golden IB</div>
           </div>
-        </div>
-        <div className="financial-report__note">
-          <strong>PT Golden IB</strong> — Laporan ini dihitung dari data penjualan yang sudah masuk ke sistem, dengan biaya pengiriman yang sesungguhnya tercatat pada setiap order.
         </div>
       </section>
 
-      <section className="grid grid-4">
-        <div className="panel">
-          <div className="muted tiny">Pendapatan</div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800 }}>{formatCurrency(revenue)}</div>
+      <section className="panel financial-report-print">
+        <div className="financial-report__note">
+          <strong>📊 Keterangan:</strong> Laporan ini dihitung dari data penjualan real yang sudah masuk ke sistem. Setiap order yang berhasil (tidak dibatalkan) dihitung sebagai pendapatan.
         </div>
-        <div className="panel">
-          <div className="muted tiny">Biaya pengiriman</div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800 }}>{formatCurrency(totalOperationalCost)}</div>
+      </section>
+
+      <section className="panel financial-report-print">
+        <div className="section-title" style={{ marginBottom: 12 }}>
+          <div>
+            <div className="eyebrow">
+              <FileText size={14} />
+              📈 Ringkasan Keuangan Periode Ini
+            </div>
+            <h2 style={{ marginTop: 10 }}>Total Pendapatan, Biaya & Laba Bersih</h2>
+          </div>
         </div>
-        <div className="panel">
-          <div className="muted tiny">Laba bersih</div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800 }}>{formatCurrency(totalNetProfit)}</div>
+
+        <div className="grid grid-4" style={{ marginBottom: 18 }}>
+          <div className="panel">
+            <div className="muted tiny">💰 Pendapatan</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 800 }}>{formatCurrency(revenue)}</div>
+            <div className="tiny muted" style={{ marginTop: "4px" }}>Jumlah order sukses</div>
+          </div>
+          <div className="panel">
+            <div className="muted tiny">🚚 Biaya Pengiriman</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 800 }}>{formatCurrency(totalOperationalCost)}</div>
+            <div className="tiny muted" style={{ marginTop: "4px" }}>Total ongkir</div>
+          </div>
+          <div className="panel">
+            <div className="muted tiny">📊 Laba Bersih</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 800 }}>{formatCurrency(totalNetProfit)}</div>
+            <div className="tiny muted" style={{ marginTop: "4px" }}>Pendapatan - Biaya</div>
+          </div>
+          <div className="panel">
+            <div className="muted tiny">✅ Order Sukses</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 800 }}>{successfulOrders.length}</div>
+            <div className="tiny muted" style={{ marginTop: "4px" }}>Pesanan selesai</div>
+          </div>
         </div>
-        <div className="panel">
-          <div className="muted tiny">Order sukses</div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 800 }}>{successfulOrders.length}</div>
+      </section>
+
+      <section className="panel financial-report-print">
+        <div className="section-title" style={{ marginBottom: 12 }}>
+          <div>
+            <div className="eyebrow">
+              <FileText size={14} />
+              🧮 Rumus Perhitungan
+            </div>
+            <h2 style={{ marginTop: 10 }}>Cara Hitung Laporan Keuangan</h2>
+          </div>
+        </div>
+
+        <div className="financial-report-formulas">
+          <div className="formula-card">
+            <div className="formula-title">Pendapatan</div>
+            <div className="formula-content">
+              <div className="formula-line">= Total semua order yang <strong>SUKSES</strong> (tidak dibatalkan)</div>
+              <div className="formula-example">Contoh: Order 1 (500rb) + Order 2 (300rb) = 800rb</div>
+            </div>
+          </div>
+
+          <div className="formula-card">
+            <div className="formula-title">Biaya Pengiriman</div>
+            <div className="formula-content">
+              <div className="formula-line">= Total <strong>Ongkir</strong> dari setiap order</div>
+              <div className="formula-example">Contoh: Order 1 ongkir 50rb + Order 2 ongkir 30rb = 80rb</div>
+            </div>
+          </div>
+
+          <div className="formula-card highlight">
+            <div className="formula-title">🎯 Laba Bersih</div>
+            <div className="formula-content">
+              <div className="formula-line"><strong>= Pendapatan - Biaya Pengiriman</strong></div>
+              <div className="formula-example">Contoh: 800rb - 80rb = <strong>720rb</strong></div>
+            </div>
+          </div>
         </div>
       </section>
 
       <section className="panel">
         <div className="eyebrow">
           <FileText size={14} />
-          Grafik pendapatan bulanan
+          📈 Grafik Pendapatan Bulanan
         </div>
         <div className="chart" style={{ marginTop: 18 }}>
           {monthlySeries.map((point) => (
@@ -181,9 +254,9 @@ export default function AdminReportsPage() {
           <div>
             <div className="eyebrow">
               <FileText size={14} />
-              Pembukuan keuangan bulan berjalan
+              📋 Tabel Laporan Keuangan Bulanan
             </div>
-            <h2 style={{ marginTop: 10 }}>Ringkasan laba dan biaya</h2>
+            <h2 style={{ marginTop: 10 }}>Detail Pendapatan Per Bulan</h2>
           </div>
         </div>
 
@@ -215,7 +288,7 @@ export default function AdminReportsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center" }}>Belum ada data laporan keuangan untuk periode ini.</td>
+                  <td colSpan={7} style={{ textAlign: "center" }}>Belum ada data laporan keuangan untuk periode ini.</td>
                 </tr>
               )}
             </tbody>
