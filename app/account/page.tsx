@@ -293,11 +293,10 @@ function OrderCard({
             {paymentMethod?.type === "COD"
               ? "COD"
               : order.paymentStatus === "PAID"
-                ? "Sudah Bayar (Menunggu Verifikasi)"
+                ? "Sudah Bayar"
                 : order.paymentStatus === "VERIFIED"
                   ? "Terverifikasi"
-                  : order.paymentStatus === "REFUNDED"
-                    ? "Refund / Dikembalikan"
+                  
                     : isAwaitingPayment
                       ? "Menunggu pembayaran"
                       : "Belum Bayar"}

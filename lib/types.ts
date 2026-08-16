@@ -1,5 +1,5 @@
 export type ThemeMode = "light" | "dark";
-export type PaymentKind = "COD" | "DANA" | "BANK";
+export type PaymentKind = "COD" | "BANK_TRANSFER" | "E_WALLET";
 export type OrderStatus = "PENDING" | "CONFIRMED" | "PACKED" | "SHIPPED" | "COMPLETED" | "CANCELLED";
 export type PaymentStatus = "UNPAID" | "PAID" | "VERIFIED" | "REFUNDED";
 
@@ -70,7 +70,7 @@ export interface CartItem {
 }
 
 export interface OrderItem {
-  id: string;
+  id?: string;
   productId: string;
   productName: string;
   unitPrice: number;

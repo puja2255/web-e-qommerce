@@ -56,7 +56,7 @@ function mapCategory(category: {
 
 function mapPaymentMethod(method: {
   id: string;
-  type: "COD" | "DANA" | "BANK";
+  type: "COD" | "BANK_TRANSFER" | "E_WALLET";
   label: string;
   details: string | null;
   accountName: string | null;
@@ -383,7 +383,7 @@ export async function updateProductRecord(
 }
 
 export async function createPaymentMethodRecord(data: {
-  type: "COD" | "DANA" | "BANK";
+  type: "COD" | "BANK_TRANSFER" | "E_WALLET";
   label: string;
   details: string;
   accountName: string;
@@ -398,7 +398,7 @@ export async function createPaymentMethodRecord(data: {
 export async function updatePaymentMethodRecord(
   id: string,
   data: {
-    type: "COD" | "DANA" | "BANK";
+    type: "COD" | "BANK_TRANSFER" | "E_WALLET";
     label: string;
     details: string;
     accountName: string;

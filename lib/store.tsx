@@ -54,7 +54,7 @@ export interface CategoryDraft {
 }
 
 export interface PaymentMethodDraft {
-  type: "COD" | "DANA" | "BANK";
+  type: "COD" | "BANK_TRANSFER" | "E_WALLET";
   label: string;
   details: string;
   accountName: string;

@@ -68,8 +68,8 @@ export default function AdminPaymentsPage() {
               <label>Tipe</label>
               <select className="select" value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value as PaymentMethodDraft["type"] })}>
                 <option value="COD">COD</option>
-                <option value="DANA">DANA</option>
-                <option value="BANK">BANK</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="E_WALLET">E-Wallet</option>
               </select>
             </div>
             <div className="field">
@@ -118,7 +118,9 @@ export default function AdminPaymentsPage() {
         <div className="grid grid-2">
           {paymentMethods.map((method) => (
             <article key={method.id} className="muted-box">
-              <div className="badge-soft">{method.type}</div>
+              <div className="badge-soft">
+                {method.type === "COD" ? "COD" : method.type === "BANK_TRANSFER" ? "Bank Transfer" : "E-Wallet"}
+              </div>
               <h3>{method.label}</h3>
               <div className="muted tiny">{method.details}</div>
               {method.type !== "COD" ? (

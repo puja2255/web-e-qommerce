@@ -14,8 +14,8 @@ enum Role {
 
 enum PaymentType {
   COD
-  DANA
-  BANK
+  BANK_TRANSFER
+  E_WALLET
 }
 
 enum OrderStatus {

@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Download, MessageCircle, PackageSearch, Search, SlidersHorizontal, X } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
+import { downloadExcelHtmlReport } from "@/lib/excel-export";
 import { useGoldenStore } from "@/lib/store";
-import { downloadCsv, formatCurrency, orderStatusLabel, paymentStatusLabel, shortDate, whatsappLink } from "@/lib/utils";
+import { formatCurrency, orderStatusLabel, paymentStatusLabel, shortDate, whatsappLink } from "@/lib/utils";
 
 const statusOptions = ["PENDING", "CONFIRMED", "PACKED", "SHIPPED", "COMPLETED", "CANCELLED"] as const;
 
@@ -71,46 +72,67 @@ export default function AdminOrdersPage() {
     });
   }, [orders, query, startDate, endDate, monthFilter, yearFilter, productFilter, categoryFilter, productMap]);
 
-  const exportOrdersExcel = () => {
-    const kop = [
-      ["PT GOLDEN IB - LAPORAN RIWAYAT PENJUALAN"],
-      ["Alamat: Ruko Golden Blok A No. 10, Jakarta"],
-      ["WhatsApp: +62 812-9876-5432"],
-      [""],
-      ["FILTER AKTIF:"],
-      ["Pencarian", query || "Semua"],
-      ["Dari Tanggal", startDate || "-"],
-      ["Sampai Tanggal", endDate || "-"],
-      ["Bulan", monthFilter ? new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2026, Number(monthFilter) - 1, 1)) : "Semua"],
-      ["Tahun", yearFilter || "Semua"],
-      ["Produk ID/Nama", productFilter ? (productMap.get(productFilter)?.name || productFilter) : "Semua"],
-      ["Kategori ID", categoryFilter ? (categories.find(c => c.id === categoryFilter)?.name || categoryFilter) : "Semua"],
-      [""],
-      ["Kode Pesanan", "Nama Barang", "Nama Pembeli", "Tanggal Beli", "Harga Satuan", "Qty", "Subtotal", "No WA", "Status Pesanan"]
+  const exportOrdersExcel = async () => {
+    const filterNotes = [
+      `Pencarian: ${query || "Semua"}`,
+      `Dari Tanggal: ${startDate || "-"}`,
+      `Sampai Tanggal: ${endDate || "-"}`,
+      `Bulan: ${monthFilter ? new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2026, Number(monthFilter) - 1, 1)) : "Semua"}`,
+      `Tahun: ${yearFilter || "Semua"}`,
+      `Produk: ${productFilter ? (productMap.get(productFilter)?.name || productFilter) : "Semua"}`,
+      `Kategori: ${categoryFilter ? (categories.find((item) => item.id === categoryFilter)?.name || categoryFilter) : "Semua"}`,
     ];
 
-    const dataRows: string[][] = [];
-    visibleOrders.forEach((order) => {
-      const dateStr = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(order.createdAt));
-      const statusStr = order.status === "CANCELLED" ? "Batal" : "Berhasil";
-      
-      order.items.forEach((item) => {
-        dataRows.push([
-          order.orderNumber,
-          item.productName,
-          order.customerName,
-          dateStr,
-          String(item.unitPrice),
-          String(item.quantity),
-          String(item.subtotal),
-          order.customerPhone,
-          statusStr
-        ]);
-      });
+    const rows = visibleOrders.flatMap((order, index) => {
+      const paymentMethod = paymentMethodMap.get(order.paymentMethodId);
+      const itemLines = order.items.map((item) => item.productName).join(", ");
+      const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
+      const paymentLabel =
+        paymentMethod?.type === "COD" ? "COD" : paymentMethod?.type === "BANK_TRANSFER" ? "Bank Transfer" : paymentMethod?.type === "E_WALLET" ? "E-Wallet" : "Metode";
+
+      return order.items.map((item, itemIndex) => [
+        String(index + 1),
+        order.orderNumber,
+        new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(order.createdAt)),
+        order.customerName,
+        order.customerPhone,
+        item.productName,
+        String(item.quantity),
+        formatCurrency(item.unitPrice),
+        formatCurrency(item.subtotal),
+        paymentLabel,
+        orderStatusLabel(order.status),
+        itemIndex === 0 ? itemLines : "",
+        itemIndex === 0 ? String(totalItems) : "",
+      ]);
     });
 
-    const rows = [...kop, ...dataRows];
-    downloadCsv(`laporan-penjualan-riwayat-${Date.now()}.csv`, rows);
+    await downloadExcelHtmlReport({
+      fileName: `laporan-riwayat-pesanan-pt-golden-ib.xls`,
+      title: "LAPORAN RIWAYAT PESANAN",
+      subtitle: "Data pesanan yang difilter dari sistem Golden Store",
+      companyName: "PT GOLDEN IB",
+      companyAddress: "Jl. Griya Harapan No.12, Way Halim Permai, Kec. Way Halim, Kota Bandar Lampung, Lampung 35133",
+      columns: [
+        { label: "No", align: "center", width: "40px" },
+        { label: "Kode Pesanan", align: "center", width: "95px" },
+        { label: "Tanggal", align: "center", width: "95px" },
+        { label: "Nama Pembeli", width: "120px" },
+        { label: "No WA", align: "center", width: "95px" },
+        { label: "Produk", width: "150px" },
+        { label: "Qty", align: "center", width: "45px" },
+        { label: "Harga Satuan", align: "right", width: "90px" },
+        { label: "Subtotal", align: "right", width: "90px" },
+        { label: "Pembayaran", align: "center", width: "90px" },
+        { label: "Status", align: "center", width: "85px" },
+        { label: "Daftar Item", width: "170px" },
+        { label: "Total Item", align: "center", width: "60px" },
+      ],
+      rows,
+      notes: filterNotes,
+      signatureLeft: "Mengetahui",
+      signatureRight: "Admin Toko",
+    });
   };
 
   const selectedOrder = useMemo(
@@ -145,7 +167,7 @@ export default function AdminOrdersPage() {
               <SlidersHorizontal size={16} />
               Filter
             </button>
-            <button className="button" type="button" onClick={exportOrdersExcel}>
+            <button className="button" type="button" onClick={() => void exportOrdersExcel()}>
               <Download size={16} />
               Export Excel
             </button>

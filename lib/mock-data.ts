@@ -47,8 +47,8 @@ export const seedState: AppState = {
     },
     {
       id: "pay-dana",
-      type: "DANA",
-      label: "DANA",
+      type: "E_WALLET",
+      label: "E-Wallet",
       details: "Transfer ke akun e-wallet resmi Golden Store.",
       accountName: "Golden Store",
       accountNumber: "0812 3456 7890",
@@ -56,7 +56,7 @@ export const seedState: AppState = {
     },
     {
       id: "pay-bank",
-      type: "BANK",
+      type: "BANK_TRANSFER",
       label: "Bank Transfer",
       details: "Transfer ke rekening bank yang disediakan admin.",
       accountName: "PT Golden Store Indonesia",

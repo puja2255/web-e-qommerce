@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, FileText, Printer, SlidersHorizontal, X } from "lucide-react";
-import logoImage from "@/image/logo.png";
+import { Download, FileText, SlidersHorizontal, X } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
+import { downloadExcelHtmlReport } from "@/lib/excel-export";
 import { buildMonthlyFinancialReport } from "@/lib/financial-report";
 import { useGoldenStore } from "@/lib/store";
 import { createMonthlySeries, formatCurrency, topProductsFromOrders } from "@/lib/utils";
@@ -78,25 +78,49 @@ export default function AdminReportsPage() {
         : "Seluruh periode";
   const printedAt = new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short" }).format(new Date());
 
-  const exportExcel = () => {
-    const number = (value: number) => new Intl.NumberFormat("id-ID").format(value);
-    const rows = financialReport.map(
-      (item) => `<tr><td>${item.label}</td><td>${number(item.revenue)}</td><td>${number(item.shippingFee)}</td><td>${number(item.labaBersih)}</td><td>${item.successfulOrders}</td><td>${item.cancelledOrders}</td><td>${item.totalOrders}</td></tr>`,
-    ).join("");
-    const workbook = `<!doctype html><html><head><meta charset="utf-8"><style>
-      body { font-family: Arial, sans-serif; color: #111; } table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #222; padding: 8px; } .no-border td { border: 0; } .logo { width: 70px; height: 70px; object-fit: contain; } .company { font-size: 18pt; font-weight: bold; } .title { text-align: center; font-size: 15pt; font-weight: bold; } .subtitle { text-align: center; } th, .total td { background: #e9e9e9; font-weight: bold; } .right { text-align: right; }
-    </style></head><body><table class="no-border"><tr><td><div class="company">PT GOLDEN IB</div><div>Jl. Contoh No. 123, Bandar Lampung, Lampung</div><div>Telepon: (0721) 123456 | Email: info@ptgoldenib.co.id</div></td></tr></table><hr/><p class="title">LAPORAN LABA RUGI</p><p class="subtitle">Periode Laporan: <b>${reportPeriod}</b><br/>Tanggal Cetak: <b>${printedAt}</b></p><table><thead><tr><th>Periode</th><th>Pendapatan</th><th>Biaya Pengiriman</th><th>Laba Bersih</th><th>Order Berhasil</th><th>Order Batal</th><th>Total Order</th></tr></thead><tbody>${rows || "<tr><td colspan=\"7\">Belum ada data laporan keuangan untuk periode ini.</td></tr>"}</tbody><tfoot><tr class="total"><td>Total</td><td>${number(revenue)}</td><td>${number(totalOperationalCost)}</td><td>${number(totalNetProfit)}</td><td>${successfulOrders.length}</td><td>${failedOrders.length}</td><td>${filteredOrders.length}</td></tr></tfoot></table><br/><table class="no-border"><tr><td>Mengetahui,</td></tr><tr><td style="text-align:center; width:50%">Direktur Utama<br/><br/><br/>( .................................... )</td><td style="text-align:center; width:50%">Bagian Keuangan<br/><br/><br/>( .................................... )</td></tr></table></body></html>`;
-    const blob = new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "laporan-laba-rugi-pt-golden-ib.xls";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportPdf = () => {
-    window.print();
+  const exportExcel = async () => {
+    await downloadExcelHtmlReport({
+      fileName: "laporan-keuangan-pt-golden-ib.xls",
+      title: "LAPORAN KEUANGAN BULANAN",
+      subtitle: `Periode: ${reportPeriod} | Dicetak: ${printedAt}`,
+      companyName: "PT GOLDEN IB",
+      companyAddress: "Jl. Griya Harapan No.12, Way Halim Permai, Kec. Way Halim, Kota Bandar Lampung, Lampung 35133",
+      columns: [
+        { label: "Periode", width: "120px" },
+        { label: "Pendapatan", align: "right", width: "100px" },
+        { label: "Biaya Pengiriman", align: "right", width: "110px" },
+        { label: "Laba Bersih", align: "right", width: "100px" },
+        { label: "Order Berhasil", align: "center", width: "70px" },
+        { label: "Order Batal", align: "center", width: "70px" },
+        { label: "Total Order", align: "center", width: "70px" },
+      ],
+      rows: [
+        ...financialReport.map((item) => [
+          item.label,
+          formatCurrency(item.revenue),
+          formatCurrency(item.shippingFee),
+          formatCurrency(item.labaBersih),
+          String(item.successfulOrders),
+          String(item.cancelledOrders),
+          String(item.totalOrders),
+        ]),
+        [
+          "TOTAL",
+          formatCurrency(revenue),
+          formatCurrency(totalOperationalCost),
+          formatCurrency(totalNetProfit),
+          String(successfulOrders.length),
+          String(failedOrders.length),
+          String(filteredOrders.length),
+        ],
+      ],
+      notes: [
+        "Laporan ini dihitung dari data penjualan yang sudah tercatat pada sistem.",
+        `Order berhasil: ${successfulOrders.length} | Order gagal: ${failedOrders.length}`,
+      ],
+      signatureLeft: "Mengetahui",
+      signatureRight: "Bagian Keuangan",
+    });
   };
 
   return (
@@ -109,11 +133,7 @@ export default function AdminReportsPage() {
             <SlidersHorizontal size={16} />
             Filter
           </button>
-          <button className="button-outline" type="button" onClick={exportPdf}>
-            <Printer size={16} />
-            Export PDF
-          </button>
-          <button className="button" type="button" onClick={exportExcel}>
+          <button className="button" type="button" onClick={() => void exportExcel()}>
             <Download size={16} />
             Export Excel
           </button>
@@ -123,7 +143,6 @@ export default function AdminReportsPage() {
       <section className="panel financial-report-print">
         <div className="financial-report__header">
           <div className="financial-report__brand">
-            <img src={logoImage.src} alt="PT Golden IB" className="financial-report__logo" />
             <div>
               <div className="eyebrow">PT Golden IB</div>
               <strong className="financial-report__title">Laporan Keuangan Bulanan</strong>
