@@ -2,7 +2,6 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   Clock3,
@@ -40,15 +39,6 @@ const statusIcon: Record<OrderStatus, typeof PackageOpen> = {
   CANCELLED: Clock3,
 };
 
-type OtpPurpose = "REGISTER" | "PROFILE" | "RESET_PASSWORD";
-
-function formatOtpCountdown(remainingMs: number) {
-  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
 function Countdown({ dueAt }: { dueAt: string }) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -74,31 +64,6 @@ function Countdown({ dueAt }: { dueAt: string }) {
         {String(hours).padStart(2, "0")}:{String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
       </strong>
     </div>
-  );
-}
-
-function OtpCountdown({ label, expiresAt }: { label: string; expiresAt: string | null }) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!expiresAt) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [expiresAt]);
-
-  if (!expiresAt) {
-    return <span className="tiny muted">OTP belum dikirim.</span>;
-  }
-
-  const remaining = new Date(expiresAt).getTime() - now;
-  if (remaining <= 0) {
-    return <span className="tiny muted">OTP kedaluwarsa. Silakan kirim ulang.</span>;
-  }
-
-  return (
-    <span className="tiny muted">
-      {label} tersisa <strong>{formatOtpCountdown(remaining)}</strong>
-    </span>
   );
 }
 
@@ -507,17 +472,12 @@ function OrderCard({
 }
 
 export default function AccountPage() {
-  const router = useRouter();
   const {
     customerSession,
     customerAddresses,
     paymentMethods,
     orders,
-    registerCustomer,
-    loginCustomer,
-    requestOtp,
     updateCustomerProfile,
-    resetCustomerPassword,
     logoutCustomer,
     saveCustomerAddress,
     deleteCustomerAddress,
@@ -526,20 +486,10 @@ export default function AccountPage() {
     refreshData,
   } = useGoldenStore();
 
-  const [mode, setMode] = useState<"login" | "register" | "reset">("login");
   const [tab, setTab] = useState<"profile" | "addresses" | "orders">("profile");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [busy, setBusy] = useState(false);
   const [profileName, setProfileName] = useState("");
-  const [profilePassword, setProfilePassword] = useState("");
-  const [profileOtp, setProfileOtp] = useState("");
-  const [otpExpiresAt, setOtpExpiresAt] = useState<Record<string, string>>({});
-  const [clock, setClock] = useState(() => Date.now());
 
   const next = typeof window === "undefined" ? "/account" : new URLSearchParams(window.location.search).get("next") || "/account";
 
@@ -548,6 +498,17 @@ export default function AccountPage() {
       setProfileName(customerSession.name);
     }
   }, [customerSession]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const error = new URLSearchParams(window.location.search).get("error");
+    if (error === "google_not_configured") {
+      setError("Login Google belum dikonfigurasi. Isi GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET di .env lalu restart server.");
+    }
+    if (error === "google_failed") {
+      setError("Login Google gagal. Cek redirect URI, client secret, dan pastikan akun Google Console sudah benar.");
+    }
+  }, []);
 
   useEffect(() => {
     if (!customerSession) return;
@@ -562,67 +523,13 @@ export default function AccountPage() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setClock(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
   const myOrders = useMemo(() => (customerSession ? orders.filter((order) => order.customerId === customerSession.id) : []), [customerSession, orders]);
   const paymentMethodMap = useMemo(() => new Map(paymentMethods.map((method) => [method.id, method])), [paymentMethods]);
 
-  const otpTarget = (purpose: OtpPurpose) => (purpose === "PROFILE" ? customerSession?.email ?? email : email).trim().toLowerCase();
-  const otpKey = (purpose: OtpPurpose, target: string) => `${purpose}:${target}`;
-  const currentOtpExpiry = (purpose: OtpPurpose) => {
-    const target = otpTarget(purpose);
-    return otpExpiresAt[otpKey(purpose, target)] ?? null;
-  };
-  const isOtpCoolingDown = (purpose: OtpPurpose) => {
-    const expiresAt = currentOtpExpiry(purpose);
-    return Boolean(expiresAt && new Date(expiresAt).getTime() > clock);
-  };
-
-  const sendOtp = async (purpose: OtpPurpose) => {
-    const target = otpTarget(purpose);
-    const result = await requestOtp(target, purpose);
-    setToast(result.ok ? result.message ?? "OTP telah dikirim ke email." : result.message ?? "OTP gagal dikirim.");
-    if (result.ok || result.retryAfterSeconds) {
-      const expiresAt = result.expiresAt ?? new Date(Date.now() + (result.retryAfterSeconds ?? 300) * 1000).toISOString();
-      setOtpExpiresAt((current) => ({ ...current, [otpKey(purpose, target)]: expiresAt }));
-    }
-  };
-
-  const submitAuth = async (event: FormEvent) => {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-
-    let result: { ok: boolean; message?: string } = { ok: false };
-
-    if (mode === "login") {
-      result = await loginCustomer(email, password);
-    } else if (mode === "register") {
-      result = await registerCustomer({ name, email, password, otp });
-    } else {
-      result = await resetCustomerPassword({ email, password, otp });
-    }
-
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.message ?? "Akun tidak dapat diproses.");
-      return;
-    }
-
-    router.push(next);
-  };
-
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
-    const result = await updateCustomerProfile({ name: profileName || undefined, password: profilePassword || undefined, otp: profileOtp });
+    const result = await updateCustomerProfile({ name: profileName || undefined });
     setError(result.ok ? "Profil diperbarui." : result.message ?? "Profil gagal diperbarui.");
-    if (result.ok) {
-      setProfilePassword("");
-      setProfileOtp("");
-    }
   };
 
   const uploadProof = async (orderId: string, file: File) => {
@@ -630,88 +537,24 @@ export default function AccountPage() {
   };
 
   if (!customerSession) {
+    const googleSignInUrl = `/api/auth/google?next=${encodeURIComponent(next)}`;
     return (
       <section className="panel auth-shell" style={{ maxWidth: 620, margin: "0 auto" }}>
         <div className="eyebrow">
           <UserRound size={14} />
           Akun pembeli
         </div>
-        <h1>{mode === "login" ? "Masuk ke akunmu" : mode === "register" ? "Buat akun untuk belanja lebih mudah" : "Lupa password"}</h1>
-        <p className="muted">
-          {mode === "reset"
-            ? "Masukkan email, kirim OTP, lalu set password baru."
-            : "Login cukup pakai nama atau email dan password."}
-        </p>
+        <h1>Masuk dengan Google</h1>
 
-        <div className="auth-switch">
-          <button type="button" className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(""); }}>
-            Masuk
-          </button>
-          <button type="button" className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); }}>
-            Daftar
-          </button>
-        </div>
-
-        <form className="stack" onSubmit={submitAuth}>
-          {mode === "register" ? (
-            <div className="field">
-              <label>Nama lengkap (unik)</label>
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} minLength={3} required />
-            </div>
-          ) : null}
-
-          <div className="field">
-            <label>{mode === "login" ? "Nama atau email" : "Email"}</label>
-            <input className="input" type="text" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-
-          <div className="field">
-            <label>Password</label>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
-            {mode === "login" ? (
-              <button
-                className="button-ghost auth-forgot"
-                type="button"
-                onClick={() => {
-                  setMode("reset");
-                  setError("");
-                }}
-              >
-                Lupa password?
-              </button>
-            ) : null}
-          </div>
-
-          {mode !== "login" ? (
-            <div className="field">
-              <label>OTP email</label>
-              <div className="stack" style={{ gap: 10 }}>
-                <div className="row-actions">
-                  <input className="input" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={6} required />
-                  <button
-                    className="button-outline"
-                    type="button"
-                    disabled={isOtpCoolingDown(mode === "register" ? "REGISTER" : "RESET_PASSWORD")}
-                    onClick={() => void sendOtp(mode === "register" ? "REGISTER" : "RESET_PASSWORD")}
-                  >
-                    {isOtpCoolingDown(mode === "register" ? "REGISTER" : "RESET_PASSWORD") ? "OTP aktif" : "Kirim OTP"}
-                  </button>
-                </div>
-                <OtpCountdown
-                  label="Timer OTP"
-                  expiresAt={currentOtpExpiry(mode === "register" ? "REGISTER" : "RESET_PASSWORD")}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {error ? <div className="muted-box" style={{ color: "var(--danger)" }}>{error}</div> : null}
-
-          <button className="button" type="submit" disabled={busy}>
-            <UserRound size={16} />
-            {busy ? "Memproses..." : mode === "login" ? "Masuk" : mode === "register" ? "Buat akun" : "Lupa password"}
-          </button>
-        </form>
+        <a className="button google-button" href={googleSignInUrl}>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.6 32.9 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.2-.4-3.5z"/>
+            <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.1 6.1 29.4 4 24 4 16.2 4 9.5 8.4 6.3 14.7z"/>
+            <path fill="#4CAF50" d="M24 44c5.3 0 10.1-2 13.7-5.3l-6.3-5.2C29.5 35.4 27 36 24 36c-5.2 0-9.6-3.1-11.8-7.5l-6.5 5C8.8 39.6 15.8 44 24 44z"/>
+            <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 3-3 5.4-5.9 6.9l6.3 5.2C34.9 37.9 40 33 40 24c0-1.3-.1-2.2-.4-3.5z"/>
+          </svg>
+          Masuk dengan Google
+        </a>
       </section>
     );
   }
@@ -820,33 +663,12 @@ export default function AccountPage() {
               <PencilLine size={14} />
               Edit profil
             </div>
-            <h2>Ubah nama atau password</h2>
-            <p className="muted">Setiap perubahan harus diverifikasi dengan OTP email.</p>
+            <h2>Ubah nama akun</h2>
+            <p className="muted">Karena login customer memakai Google, profil cukup ubah nama tanpa OTP.</p>
 
             <div className="field">
               <label>Nama</label>
               <input className="input" value={profileName} onChange={(event) => setProfileName(event.target.value)} />
-            </div>
-            <div className="field">
-              <label>Password baru</label>
-              <input className="input" type="password" value={profilePassword} onChange={(event) => setProfilePassword(event.target.value)} minLength={8} placeholder="Kosongkan jika tidak diubah" />
-            </div>
-            <div className="field">
-              <label>OTP email</label>
-              <div className="stack" style={{ gap: 10 }}>
-                <div className="row-actions">
-                  <input className="input" value={profileOtp} onChange={(event) => setProfileOtp(event.target.value)} maxLength={6} required />
-                  <button
-                    className="button-outline"
-                    type="button"
-                    disabled={isOtpCoolingDown("PROFILE")}
-                    onClick={() => void sendOtp("PROFILE")}
-                  >
-                    {isOtpCoolingDown("PROFILE") ? "OTP aktif" : "Kirim OTP"}
-                  </button>
-                </div>
-                <OtpCountdown label="Timer OTP" expiresAt={currentOtpExpiry("PROFILE")} />
-              </div>
             </div>
             <button className="button" type="submit">
               <ShieldCheck size={16} />

@@ -96,7 +96,7 @@ interface StoreContextValue extends AppState {
   registerCustomer: (data: Pick<CustomerSession, "name" | "email"> & { password: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   loginCustomer: (identity: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   requestOtp: (email: string, purpose: "REGISTER" | "PROFILE" | "RESET_PASSWORD") => Promise<{ ok: boolean; message?: string; retryAfterSeconds?: number; expiresAt?: string }>;
-  updateCustomerProfile: (data: { name?: string; password?: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
+  updateCustomerProfile: (data: { name?: string }) => Promise<{ ok: boolean; message?: string }>;
   resetCustomerPassword: (data: { email: string; password: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   logoutCustomer: () => void;
   saveCustomerAddress: (address: Omit<CustomerAddress, "id"> & { id?: string }) => void;
@@ -337,7 +337,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateCustomerProfile = async (data: { name?: string; password?: string; otp: string }) => {
+  const updateCustomerProfile = async (data: { name?: string }) => {
     try { const response = await fetch("/api/auth/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); const result = await response.json(); if (!response.ok) return { ok: false, message: result.message }; setCustomerSession(result.customer); return { ok: true }; } catch { return { ok: false, message: "Profil belum dapat diperbarui." }; }
   };
 
