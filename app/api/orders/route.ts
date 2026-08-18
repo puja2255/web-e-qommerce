@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createOrderRecord, getBootstrapState } from "@/lib/server-data";
+import { OrderCreationError, createOrderRecord, getBootstrapState } from "@/lib/server-data";
 import { getCustomerSession } from "@/lib/customer-auth";
 
 export async function GET() {
@@ -56,6 +56,9 @@ export async function POST(request: Request) {
     return NextResponse.json(order, { status: 201 });
   } catch (error) {
     console.error("Gagal membuat pesanan:", error);
+    if (error instanceof OrderCreationError) {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
     return NextResponse.json(
       { message: "Pesanan gagal dibuat. Silakan coba lagi." },
       { status: 500 },

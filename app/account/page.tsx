@@ -19,6 +19,7 @@ import {
 import { AddressForm } from "@/components/address-form";
 import { useGoldenStore } from "@/lib/store";
 import { formatCurrency, shortDate } from "@/lib/utils";
+import { deliveryEstimateLabel } from "@/lib/delivery-estimate";
 import type { Order, OrderStatus, PaymentMethod } from "@/lib/types";
 
 
@@ -268,6 +269,16 @@ function OrderCard({
           </strong>
         </div>
       </div>
+
+      {order.status !== "CANCELLED" ? (
+        <div className="muted-box" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Truck size={18} />
+          <div>
+            <span className="tiny muted">Estimasi pesanan tiba</span>
+            <strong style={{ display: "block" }}>{deliveryEstimateLabel(order.createdAt)}</strong>
+          </div>
+        </div>
+      ) : null}
 
       <div className="muted-box" style={{ display: "grid", gap: 4 }}>
         <span className="tiny muted">Metode pembayaran</span>
@@ -529,7 +540,12 @@ export default function AccountPage() {
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
     const result = await updateCustomerProfile({ name: profileName || undefined });
-    setError(result.ok ? "Profil diperbarui." : result.message ?? "Profil gagal diperbarui.");
+    if (result.ok) {
+      setError("");
+      setToast("Nama berhasil disimpan.");
+      return;
+    }
+    setError(result.message ?? "Profil gagal diperbarui.");
   };
 
   const uploadProof = async (orderId: string, file: File) => {
@@ -566,6 +582,7 @@ export default function AccountPage() {
           {toast}
         </div>
       ) : null}
+      {error ? <div className="muted-box" style={{ color: "var(--danger)" }}>{error}</div> : null}
       <section className="account-hero panel">
         <div className="account-hero__main">
           {/* Badge Akun Saya */}

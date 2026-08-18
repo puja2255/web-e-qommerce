@@ -72,6 +72,7 @@ export interface CartItem {
 export interface OrderItem {
   id?: string;
   productId: string;
+  slug?: string;
   productName: string;
   unitPrice: number;
   quantity: number;

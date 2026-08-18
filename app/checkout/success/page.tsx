@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { CheckCircle2, Clock3, MessageCircle, PackageCheck, ShoppingBag } from "lucide-react";
+import { CheckCircle2, Clock3, MessageCircle, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 import { useGoldenStore } from "@/lib/store";
 import { formatCurrency, shortDate, whatsappLink } from "@/lib/utils";
+import { deliveryEstimateLabel } from "@/lib/delivery-estimate";
 
 function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
@@ -37,6 +38,7 @@ function CheckoutSuccessContent() {
         Nomor pesanan <strong>{order.orderNumber}</strong> dibuat pada {shortDate(order.createdAt)}.
       </p>
       {order.paymentDueAt && order.paymentStatus === "UNPAID" ? <div className="success-payment-window"><Clock3 size={19} /><div><strong>Pesanan menunggu pembayaran</strong><span>Silakan bayar sebelum {new Intl.DateTimeFormat("id-ID", { dateStyle: "full", timeStyle: "short" }).format(new Date(order.paymentDueAt))}. Status dan tenggatnya dapat dipantau di Akun Saya.</span></div></div> : null}
+      {order.status !== "CANCELLED" ? <div className="success-payment-window"><Truck size={19} /><div><strong>Estimasi pesanan tiba</strong><span>{deliveryEstimateLabel(order.createdAt)} dari tanggal pemesanan.</span></div></div> : null}
       <div className="grid grid-3" style={{ marginTop: 18, textAlign: "left" }}>
         <div className="muted-box">
           <strong>Nama</strong>

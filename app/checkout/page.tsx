@@ -14,6 +14,7 @@ import {
   warehouseLocation,
   type ShippingService,
 } from "@/lib/address-service";
+import { deliveryEstimateLabel } from "@/lib/delivery-estimate";
 
 const FREE_SHIPPING_TAG = "FREE_SHIPPING";
 
@@ -58,6 +59,7 @@ export default function CheckoutPage() {
           : 0;
   const total = subtotal + shippingFee;
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
+  const deliveryEstimate = deliveryEstimateLabel();
 
   useEffect(() => {
     if (!recipientAddresses.length) {
@@ -159,7 +161,7 @@ export default function CheckoutPage() {
     }
 
     setLoading(true);
-    const order = await createOrder({
+    const result = await createOrder({
       customerName: checkoutAddress.customerName,
       customerPhone: checkoutAddress.customerPhone,
       customerAddress:
@@ -174,11 +176,11 @@ export default function CheckoutPage() {
     });
     setLoading(false);
 
-    if (!order) {
-      return setError("Pesanan gagal dibuat. Coba lagi.");
+    if (!result.order) {
+      return setError(result.message ?? "Pesanan gagal dibuat. Coba lagi.");
     }
 
-    router.push(`/checkout/success?order=${order.orderNumber}`);
+    router.push(`/checkout/success?order=${result.order.orderNumber}`);
   };
 
   return (
@@ -320,6 +322,14 @@ export default function CheckoutPage() {
             <span>
               {distance !== null ? `${shippingService} · ${distance} km` : `${shippingService} · wajib GPS / alamat tersimpan`} · {totalItems} barang
             </span>
+          </div>
+        </div>
+
+        <div className="muted-box" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Truck size={18} />
+          <div>
+            <strong>Estimasi pesanan tiba</strong>
+            <div className="tiny muted">{deliveryEstimate} dari tanggal pemesanan.</div>
           </div>
         </div>
 

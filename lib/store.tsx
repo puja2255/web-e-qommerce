@@ -104,7 +104,7 @@ interface StoreContextValue extends AppState {
   updateCartQuantity: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
-  createOrder: (payload: CheckoutPayload) => Promise<Order | null>;
+  createOrder: (payload: CheckoutPayload) => Promise<{ order: Order | null; message?: string }>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   uploadPaymentProof: (orderId: string, file: File) => Promise<{ ok: boolean; message?: string }>;
   refreshData: () => Promise<void>;
@@ -417,18 +417,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const createOrder = async (payload: CheckoutPayload) => {
-    if (!customerSession) return null;
+    if (!customerSession) return { order: null, message: "Silakan masuk terlebih dahulu." };
     const paymentMethod = state.paymentMethods.find((method) => method.id === payload.paymentMethodId);
     if (!paymentMethod) {
-      return null;
+      return { order: null, message: "Pilih metode pembayaran terlebih dahulu." };
     }
 
     if (state.cart.length === 0) {
-      return null;
+      return { order: null, message: "Keranjang masih kosong." };
     }
 
     const items: OrderItem[] = state.cart.map((item) => ({
       productId: item.productId,
+      slug: item.slug,
       productName: item.name,
       unitPrice: item.price,
       quantity: item.quantity,
@@ -448,13 +449,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }),
         });
       const result = await response.json();
-      if (!response.ok) return null;
+      if (!response.ok) return { order: null, message: result.message ?? "Pesanan gagal dibuat." };
       const order = result as Order;
       setState((current) => ({ ...current, orders: [order, ...current.orders.filter((item) => item.id !== order.id)], cart: [] }));
       await refreshCollections();
-      return order;
+      return { order };
     } catch {
-      return null;
+      return { order: null, message: "Tidak dapat terhubung untuk membuat pesanan. Coba lagi." };
     }
   };
 

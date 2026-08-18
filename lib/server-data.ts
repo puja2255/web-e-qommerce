@@ -5,6 +5,8 @@ import { seedState } from "@/lib/mock-data";
 import { AppState, Category, Order, PaymentMethod, Product } from "@/lib/types";
 import { slugify } from "@/lib/utils";
 
+export class OrderCreationError extends Error {}
+
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.map((item) => String(item));
@@ -425,6 +427,7 @@ export async function createOrderRecord(data: {
   paymentDueAt?: string;
   items: Array<{
     productId: string;
+    slug?: string;
     productName: string;
     unitPrice: number;
     quantity: number;
@@ -432,13 +435,61 @@ export async function createOrderRecord(data: {
     image: string;
   }>;
 }) {
-  const nextCount = await prisma.order.count();
-  const orderNumber = `GS-${String(nextCount + 1).padStart(5, "0")}`;
-  const shippingFee = Math.max(0, Number(data.shippingFee) || 0);
-  const totalAmount = data.items.reduce((sum, item) => sum + item.subtotal, 0) + shippingFee;
+  const customer = data.customerId
+    ? await prisma.user.findUnique({ where: { id: data.customerId }, select: { id: true } })
+    : null;
+  if (!customer) {
+    throw new OrderCreationError("Sesi akun tidak lagi valid. Silakan masuk kembali sebelum checkout.");
+  }
+
   const paymentMethod = await prisma.paymentMethod.findUnique({
     where: { id: data.paymentMethodId },
   });
+  if (!paymentMethod || !paymentMethod.isActive) {
+    throw new OrderCreationError("Metode pembayaran tidak tersedia. Muat ulang halaman lalu pilih metode lain.");
+  }
+
+  const requestedProductIds = [...new Set(data.items.map((item) => item.productId))];
+  const requestedProductSlugs = [...new Set(data.items.map((item) => item.slug).filter((slug): slug is string => Boolean(slug)))];
+  const products = await prisma.product.findMany({
+    where: {
+      OR: [
+        { id: { in: requestedProductIds } },
+        ...(requestedProductSlugs.length ? [{ slug: { in: requestedProductSlugs } }] : []),
+      ],
+    },
+    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+  });
+  const productsById = new Map(products.map((product) => [product.id, product]));
+  const productsBySlug = new Map(products.map((product) => [product.slug, product]));
+
+  const items = data.items.map((item) => {
+    const quantity = Number(item.quantity);
+    const product = productsById.get(item.productId) ?? (item.slug ? productsBySlug.get(item.slug) : undefined);
+    if (!product || !product.isActive) {
+      throw new OrderCreationError("Ada produk di keranjang yang sudah tidak tersedia. Muat ulang halaman dan periksa keranjang kembali.");
+    }
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new OrderCreationError(`Jumlah untuk ${product.name} tidak valid.`);
+    }
+    if (quantity > product.stock) {
+      throw new OrderCreationError(`Stok ${product.name} tidak mencukupi.`);
+    }
+
+    return {
+      productId: product.id,
+      productName: product.name,
+      unitPrice: product.price,
+      quantity,
+      subtotal: product.price * quantity,
+      image: product.images[0]?.url ?? "",
+    };
+  });
+
+  const nextCount = await prisma.order.count();
+  const orderNumber = `GS-${String(nextCount + 1).padStart(5, "0")}`;
+  const shippingFee = Math.max(0, Number(data.shippingFee) || 0);
+  const totalAmount = items.reduce((sum, item) => sum + item.subtotal, 0) + shippingFee;
 
   // Tenggat selalu ditentukan server supaya permintaan dari browser tidak bisa
   // membuat waktu pembayaran yang lebih panjang.
@@ -461,7 +512,7 @@ export async function createOrderRecord(data: {
       status: "PENDING",
       paymentStatus: paymentMethod?.type === "COD" ? "VERIFIED" : "UNPAID",
       items: {
-        create: data.items.map((item) => ({
+        create: items.map((item) => ({
           productId: item.productId,
           productName: item.productName,
           unitPrice: item.unitPrice,
