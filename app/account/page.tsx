@@ -270,7 +270,7 @@ function OrderCard({
         </div>
       </div>
 
-      {order.status !== "CANCELLED" ? (
+      {order.status !== "CANCELLED" && order.shippingService !== "INSTANT" ? (
         <div className="muted-box" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Truck size={18} />
           <div>
@@ -534,7 +534,20 @@ export default function AccountPage() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const myOrders = useMemo(() => (customerSession ? orders.filter((order) => order.customerId === customerSession.id) : []), [customerSession, orders]);
+  const myOrders = useMemo(() => {
+    if (!customerSession) return [];
+
+    const normalizedName = customerSession.name.trim().toLowerCase();
+    const normalizedPhone = customerSession.phone.trim();
+
+    return orders.filter((order) => {
+      if (order.customerId === customerSession.id) {
+        return true;
+      }
+
+      return order.customerName.trim().toLowerCase() === normalizedName && order.customerPhone.trim() === normalizedPhone;
+    });
+  }, [customerSession, orders]);
   const paymentMethodMap = useMemo(() => new Map(paymentMethods.map((method) => [method.id, method])), [paymentMethods]);
 
   const saveProfile = async (event: FormEvent) => {

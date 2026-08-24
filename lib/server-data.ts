@@ -1,8 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { seedState } from "@/lib/mock-data";
-import { AppState, Category, Order, PaymentMethod, Product } from "@/lib/types";
+import { AppState, Banner, Category, Order, PaymentMethod, Product } from "@/lib/types";
 import { slugify } from "@/lib/utils";
 
 export class OrderCreationError extends Error {}
@@ -15,12 +14,13 @@ function toStringArray(value: unknown): string[] {
   return [];
 }
 
-function fallbackState(): Pick<AppState, "categories" | "paymentMethods" | "products" | "orders"> {
+function fallbackState(): Pick<AppState, "categories" | "paymentMethods" | "products" | "orders" | "banners"> {
   return {
-    categories: seedState.categories,
-    paymentMethods: seedState.paymentMethods,
-    products: seedState.products,
-    orders: seedState.orders,
+    categories: [],
+    paymentMethods: [],
+    products: [],
+    orders: [],
+    banners: [],
   };
 }
 
@@ -112,6 +112,26 @@ function mapProduct(product: {
   };
 }
 
+function mapBanner(banner: {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  link: string;
+  isActive: boolean;
+  sortOrder: number;
+}): Banner {
+  return {
+    id: banner.id,
+    title: banner.title,
+    subtitle: banner.subtitle,
+    imageUrl: banner.imageUrl,
+    link: banner.link,
+    isActive: banner.isActive,
+    sortOrder: banner.sortOrder,
+  };
+}
+
 function mapOrder(order: {
   id: string;
   orderNumber: string;
@@ -120,6 +140,7 @@ function mapOrder(order: {
   customerAddress: string;
   mapsLink: string | null;
   notes: string | null;
+  shippingService: string;
   status: "PENDING" | "CONFIRMED" | "PACKED" | "SHIPPED" | "COMPLETED" | "CANCELLED";
   paymentStatus: "UNPAID" | "PAID" | "VERIFIED" | "REFUNDED";
   paymentMethodId: string;
@@ -149,6 +170,7 @@ function mapOrder(order: {
     customerAddress: order.customerAddress,
     mapsLink: order.mapsLink ?? "",
     notes: order.notes ?? "",
+    shippingService: order.shippingService === "INSTANT" ? "INSTANT" : "REGULER",
     status: order.status,
     paymentStatus: order.paymentStatus,
     paymentMethodId: order.paymentMethodId,
@@ -181,10 +203,10 @@ function mapOrder(order: {
   };
 }
 
-async function queryState(): Promise<Pick<AppState, "categories" | "paymentMethods" | "products" | "orders">> {
+async function queryState(): Promise<Pick<AppState, "categories" | "paymentMethods" | "products" | "orders" | "banners">> {
   await expireOverdueOrders();
 
-  const [categories, paymentMethods, products, orders] = await Promise.all([
+  const [categories, paymentMethods, products, orders, banners] = await Promise.all([
     prisma.category.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.paymentMethod.findMany({ orderBy: { createdAt: "asc" } }),
     prisma.product.findMany({
@@ -206,9 +228,12 @@ async function queryState(): Promise<Pick<AppState, "categories" | "paymentMetho
         },
       },
     }),
+    prisma.banner.findMany({
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    }),
   ]);
 
-  if (categories.length === 0 && paymentMethods.length === 0 && products.length === 0 && orders.length === 0) {
+  if (categories.length === 0 && paymentMethods.length === 0 && products.length === 0 && orders.length === 0 && banners.length === 0) {
     return fallbackState();
   }
 
@@ -217,6 +242,7 @@ async function queryState(): Promise<Pick<AppState, "categories" | "paymentMetho
     paymentMethods: paymentMethods.map(mapPaymentMethod),
     products: products.map(mapProduct),
     orders: orders.map(mapOrder),
+    banners: banners.map(mapBanner),
   };
 }
 
@@ -421,6 +447,7 @@ export async function createOrderRecord(data: {
   mapsLink: string;
   notes: string;
   paymentMethodId: string;
+  shippingService: "REGULER" | "INSTANT";
   paymentProofUrl?: string;
   customerId?: string;
   shippingFee?: number;
@@ -506,6 +533,7 @@ export async function createOrderRecord(data: {
       paymentMethodId: data.paymentMethodId,
       paymentProofUrl: data.paymentProofUrl,
       customerId: data.customerId || undefined,
+      shippingService: data.shippingService,
       paymentDueAt,
       totalAmount,
       shippingFee,

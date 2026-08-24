@@ -10,15 +10,11 @@ export interface ExcelTableColumn {
 
 export interface ExcelExportOptions {
   fileName: string;
-  title: string;
-  subtitle?: string;
   companyName: string;
   companyAddress: string;
+  printedAt: string;
   columns: ExcelTableColumn[];
   rows: string[][];
-  notes?: string[];
-  signatureLeft?: string;
-  signatureRight?: string;
 }
 
 const escapeHtml = (value: string) =>
@@ -52,12 +48,6 @@ export async function downloadExcelHtmlReport(options: ExcelExportOptions) {
         )
         .join("")
     : `<tr><td colspan="${options.columns.length}" class="center">Tidak ada data.</td></tr>`;
-  const noteRows = options.notes?.length
-    ? `<div class="notes">${options.notes.map((note) => `<div>${escapeHtml(note)}</div>`).join("")}</div>`
-    : "";
-  const signatureLeft = options.signatureLeft ? escapeHtml(options.signatureLeft) : "";
-  const signatureRight = options.signatureRight ? escapeHtml(options.signatureRight) : "";
-
   const html = `<!doctype html>
 <html>
   <head>
@@ -76,17 +66,10 @@ export async function downloadExcelHtmlReport(options: ExcelExportOptions) {
       }
       .header {
         text-align: center;
-        margin-bottom: 14px;
-      }
-      .header img {
-        width: 64px;
-        height: 64px;
-        object-fit: contain;
-        display: block;
-        margin: 0 auto 8px;
+        margin-bottom: 24px;
       }
       .company-name {
-        font-size: 17pt;
+        font-size: 16pt;
         font-weight: 700;
         letter-spacing: 0.4px;
       }
@@ -94,27 +77,13 @@ export async function downloadExcelHtmlReport(options: ExcelExportOptions) {
         font-size: 10pt;
         margin-top: 2px;
       }
-      .title {
-        font-size: 14pt;
-        font-weight: 700;
-        margin: 10px 0 6px;
-        text-align: center;
-      }
-      .subtitle {
-        font-size: 10pt;
-        text-align: center;
-        margin-bottom: 14px;
-      }
-      .meta {
-        text-align: center;
-        margin-bottom: 12px;
-        line-height: 1.5;
-      }
-      .notes {
-        margin: 8px 0 12px;
+      .print-date {
         text-align: center;
         font-size: 9.5pt;
-        line-height: 1.45;
+        margin-top: 6px;
+      }
+      .header-gap {
+        height: 10px;
       }
       table {
         width: 100%;
@@ -160,30 +129,13 @@ export async function downloadExcelHtmlReport(options: ExcelExportOptions) {
       <div class="header">
         <div class="company-name">${escapeHtml(options.companyName)}</div>
         <div class="company-address">${escapeHtml(options.companyAddress)}</div>
+        <div class="print-date">Tanggal cetak: ${escapeHtml(options.printedAt)}</div>
       </div>
-      <div class="title">${escapeHtml(options.title)}</div>
-      ${options.subtitle ? `<div class="subtitle">${escapeHtml(options.subtitle)}</div>` : ""}
-      ${noteRows}
+      <div class="header-gap"></div>
       <table>
         <thead><tr>${headerColumns}</tr></thead>
         <tbody>${bodyRows}</tbody>
       </table>
-      ${(signatureLeft || signatureRight) ? `
-        <table class="signatures">
-          <tr>
-            <td>
-              <div>${signatureLeft}</div>
-              <div class="sign-line"></div>
-              <div>(....................................)</div>
-            </td>
-            <td>
-              <div>${signatureRight}</div>
-              <div class="sign-line"></div>
-              <div>(....................................)</div>
-            </td>
-          </tr>
-        </table>
-      ` : ""}
     </div>
   </body>
 </html>`;

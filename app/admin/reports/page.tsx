@@ -81,10 +81,9 @@ export default function AdminReportsPage() {
   const exportExcel = async () => {
     await downloadExcelHtmlReport({
       fileName: "laporan-keuangan-pt-golden-ib.xls",
-      title: "LAPORAN KEUANGAN BULANAN",
-      subtitle: `Periode: ${reportPeriod} | Dicetak: ${printedAt}`,
       companyName: "PT GOLDEN IB",
       companyAddress: "Jl. Griya Harapan No.12, Way Halim Permai, Kec. Way Halim, Kota Bandar Lampung, Lampung 35133",
+      printedAt,
       columns: [
         { label: "Periode", width: "120px" },
         { label: "Pendapatan", align: "right", width: "100px" },
@@ -114,12 +113,6 @@ export default function AdminReportsPage() {
           String(filteredOrders.length),
         ],
       ],
-      notes: [
-        "Laporan ini dihitung dari data penjualan yang sudah tercatat pada sistem.",
-        `Order berhasil: ${successfulOrders.length} | Order gagal: ${failedOrders.length}`,
-      ],
-      signatureLeft: "Mengetahui",
-      signatureRight: "Bagian Keuangan",
     });
   };
 

@@ -45,7 +45,10 @@ export default function CheckoutPage() {
       ? { latitude: selectedAddress.latitude, longitude: selectedAddress.longitude }
       : geoPoint;
   const distance = selectedCoordinates ? distanceInKm(warehouseLocation, selectedCoordinates) : null;
-  const shippingTargetText = addressMode === "saved" ? selectedAddress?.province ?? selectedAddress?.city ?? "" : customerAddress;
+  const shippingTargetText =
+    addressMode === "saved"
+      ? `${selectedAddress?.detail ?? ""} ${selectedAddress?.postalCode ?? ""}`.trim()
+      : customerAddress;
   const instantAllowed = isLampungAddress(shippingTargetText);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = calcCartSubtotal(cart);
@@ -59,7 +62,7 @@ export default function CheckoutPage() {
           : 0;
   const total = subtotal + shippingFee;
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
-  const deliveryEstimate = deliveryEstimateLabel();
+  const deliveryEstimate = shippingService === "REGULER" ? deliveryEstimateLabel() : "";
 
   useEffect(() => {
     if (!recipientAddresses.length) {
@@ -93,7 +96,7 @@ export default function CheckoutPage() {
     setCustomerName(address.recipientName);
     setCustomerPhone(address.phone);
     setPostalCode(address.postalCode ?? "");
-    setCustomerAddress(`${address.detail}, ${address.district}, ${address.city}, ${address.province}`);
+    setCustomerAddress(address.detail);
     setMapsLink(address.mapsUrl ?? "");
     setGeoPoint(
       address.latitude != null && address.longitude != null
@@ -171,6 +174,7 @@ export default function CheckoutPage() {
       mapsLink: checkoutAddress.mapsLink,
       notes,
       paymentMethodId,
+      shippingService,
       customerId: customerSession.id,
       shippingFee,
     });
@@ -231,7 +235,8 @@ export default function CheckoutPage() {
                     <strong>{selectedAddress.recipientName}</strong>
                     <span>{selectedAddress.phone}</span>
                     <span>
-                      {selectedAddress.detail}, {selectedAddress.district}, {selectedAddress.city}, {selectedAddress.province}
+                      {selectedAddress.detail}
+                      {selectedAddress.postalCode ? `, ${selectedAddress.postalCode}` : ""}
                     </span>
                   </div>
                 ) : null}
@@ -325,13 +330,15 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <div className="muted-box" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Truck size={18} />
-          <div>
-            <strong>Estimasi pesanan tiba</strong>
-            <div className="tiny muted">{deliveryEstimate} dari tanggal pemesanan.</div>
+        {shippingService === "REGULER" ? (
+          <div className="muted-box" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Truck size={18} />
+            <div>
+              <strong>Estimasi pesanan tiba</strong>
+              <div className="tiny muted">{deliveryEstimate} dari tanggal pemesanan.</div>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="field">
           <label>Metode Pembayaran</label>

@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useState } from "react";
-import { seedState } from "@/lib/mock-data";
 import {
   AppState,
   Banner,
@@ -23,12 +22,19 @@ const SESSION_KEYS = {
   theme: "golden-store-theme-v1",
   cart: "golden-store-cart-v1",
   customer: "golden-store-customer-v1",
-  addresses: "golden-store-addresses-v1",
-  orders: "golden-store-customer-orders-v1",
-  banners: "golden-store-banners-v1",
 };
 const ADMIN_EMAIL = "admin@goldenstore.id";
 const ADMIN_PASSWORD = "Golden123!";
+const EMPTY_STATE: AppState = {
+  theme: "dark",
+  categories: [],
+  paymentMethods: [],
+  banners: [],
+  products: [],
+  cart: [],
+  orders: [],
+  adminSession: null,
+};
 
 export interface ProductDraft {
   name: string;
@@ -77,6 +83,7 @@ export interface CheckoutPayload {
   mapsLink: string;
   notes: string;
   paymentMethodId: string;
+  shippingService: "REGULER" | "INSTANT";
   paymentProofUrl?: string;
   customerId?: string;
   shippingFee: number;
@@ -99,8 +106,8 @@ interface StoreContextValue extends AppState {
   updateCustomerProfile: (data: { name?: string }) => Promise<{ ok: boolean; message?: string }>;
   resetCustomerPassword: (data: { email: string; password: string; otp: string }) => Promise<{ ok: boolean; message?: string }>;
   logoutCustomer: () => void;
-  saveCustomerAddress: (address: Omit<CustomerAddress, "id"> & { id?: string }) => void;
-  deleteCustomerAddress: (addressId: string) => void;
+  saveCustomerAddress: (address: Omit<CustomerAddress, "id"> & { id?: string }) => Promise<void>;
+  deleteCustomerAddress: (addressId: string) => Promise<void>;
   updateCartQuantity: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
@@ -138,11 +145,24 @@ async function fetchBootstrapState() {
     throw new Error("Failed to load bootstrap state");
   }
 
-  return (await response.json()) as Pick<AppState, "categories" | "paymentMethods" | "products" | "orders">;
+  return (await response.json()) as Pick<AppState, "categories" | "paymentMethods" | "products" | "orders" | "banners">;
+}
+
+async function fetchCustomerAddresses() {
+  const response = await fetch("/api/addresses", {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return [] as CustomerAddress[];
+  }
+
+  const result = (await response.json()) as { addresses?: CustomerAddress[] };
+  return result.addresses ?? [];
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>(seedState);
+  const [state, setState] = useState<AppState>(EMPTY_STATE);
   const [customerSession, setCustomerSession] = useState<CustomerSession | null>(null);
   const [customerAddresses, setCustomerAddresses] = useState<CustomerAddress[]>([]);
   const [cartNotice, setCartNotice] = useState<string | null>(null);
@@ -151,37 +171,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [bootstrapState, storedTheme, storedCart, storedCustomer, storedAddresses, storedOrders, storedBanners] = await Promise.all([
+        const [bootstrapState, storedTheme, storedCart, storedCustomer, serverAddresses] = await Promise.all([
           fetchBootstrapState(),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.theme)),
           Promise.resolve(window.localStorage.getItem(SESSION_KEYS.cart)),
           fetch("/api/auth/session", { cache: "no-store" }).then((response) => response.ok ? response.json() : { customer: null }),
-          Promise.resolve(window.localStorage.getItem(SESSION_KEYS.addresses)),
-          Promise.resolve(window.localStorage.getItem(SESSION_KEYS.orders)),
-          Promise.resolve(window.localStorage.getItem(SESSION_KEYS.banners)),
+          fetchCustomerAddresses(),
         ]);
 
         const sessionState: SessionStorageState = {
-          theme: (storedTheme as ThemeMode | null) ?? seedState.theme,
-          cart: storedCart ? (JSON.parse(storedCart) as CartItem[]) : seedState.cart,
+          theme: (storedTheme as ThemeMode | null) ?? "dark",
+          cart: storedCart ? (JSON.parse(storedCart) as CartItem[]) : [],
           adminSession: null,
         };
 
-        const customerOrders = storedOrders ? (JSON.parse(storedOrders) as Order[]) : [];
-        const orderMap = new Map(bootstrapState.orders.map((order) => [order.orderNumber, order]));
-        customerOrders.forEach((order) => orderMap.set(order.orderNumber, order));
-
         setState({
-          ...seedState,
           ...bootstrapState,
           ...sessionState,
-          orders: Array.from(orderMap.values()),
-          banners: storedBanners ? (JSON.parse(storedBanners) as Banner[]) : seedState.banners,
+          banners: bootstrapState.banners ?? [],
         });
         setCustomerSession(storedCustomer?.customer ?? null);
-        setCustomerAddresses(storedAddresses ? (JSON.parse(storedAddresses) as CustomerAddress[]) : []);
+        setCustomerAddresses(serverAddresses);
       } catch {
-        setState(seedState);
+        setState(EMPTY_STATE);
       } finally {
         setHydrated(true);
       }
@@ -196,15 +208,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     window.localStorage.setItem(SESSION_KEYS.theme, state.theme);
     window.localStorage.setItem(SESSION_KEYS.cart, JSON.stringify(state.cart));
-    window.localStorage.setItem(SESSION_KEYS.addresses, JSON.stringify(customerAddresses));
-    window.localStorage.setItem(SESSION_KEYS.orders, JSON.stringify(state.orders));
-    window.localStorage.setItem(SESSION_KEYS.banners, JSON.stringify(state.banners));
     document.documentElement.dataset.theme = state.theme;
   }, [hydrated, state, customerSession, customerAddresses]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = state.theme;
   }, [state.theme]);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    if (!customerSession) {
+      setCustomerAddresses([]);
+      return;
+    }
+
+    void (async () => {
+      const addresses = await fetchCustomerAddresses();
+      setCustomerAddresses(addresses);
+    })();
+  }, [customerSession, hydrated]);
 
   const toggleTheme = () => {
     setState((current) => ({
@@ -223,14 +248,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refreshCollections = async () => {
     try {
       const bootstrapState = await fetchBootstrapState();
-      const orderMap = new Map<string, Order>();
-      [...state.orders, ...bootstrapState.orders].forEach((order) => {
-        orderMap.set(order.id, order);
-      });
       setState((current) => ({
         ...current,
         ...bootstrapState,
-        orders: Array.from(orderMap.values()),
       }));
     } catch {
       // Keep optimistic state if refresh fails.
@@ -359,19 +379,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logoutCustomer = () => { setCustomerSession(null); void fetch("/api/auth/logout", { method: "POST" }); };
-
-  const saveCustomerAddress = (address: Omit<CustomerAddress, "id"> & { id?: string }) => {
-    setCustomerAddresses((current) => {
-      const next = { ...address, id: address.id ?? `address-${Date.now()}` };
-      const withoutCurrent = current.filter((item) => item.id !== next.id);
-      const normalized = address.isPrimary ? withoutCurrent.map((item) => ({ ...item, isPrimary: false })) : withoutCurrent;
-      return address.isPrimary ? [next, ...normalized] : [...normalized, next];
-    });
+  const logoutCustomer = () => {
+    setCustomerSession(null);
+    setCustomerAddresses([]);
+    void fetch("/api/auth/logout", { method: "POST" });
   };
 
-  const deleteCustomerAddress = (addressId: string) => {
-    setCustomerAddresses((current) => current.filter((item) => item.id !== addressId));
+  const saveCustomerAddress = async (address: Omit<CustomerAddress, "id"> & { id?: string }) => {
+    try {
+      const response = await fetch(address.id ? `/api/addresses/${address.id}` : "/api/addresses", {
+        method: address.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(address),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message ?? "Alamat gagal disimpan.");
+      }
+      setCustomerAddresses(result.addresses ?? []);
+    } catch {
+      // Keep existing local state if sync fails.
+    }
+  };
+
+  const deleteCustomerAddress = async (addressId: string) => {
+    try {
+      const response = await fetch(`/api/addresses/${addressId}`, { method: "DELETE" });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message ?? "Alamat gagal dihapus.");
+      }
+      setCustomerAddresses(result.addresses ?? []);
+    } catch {
+      // Keep existing local state if sync fails.
+    }
   };
 
   const updateCartQuantity = (productId: string, quantity: number) => {
@@ -445,6 +486,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           },
           body: JSON.stringify({
             ...payload,
+            shippingService: payload.shippingService,
             items,
           }),
         });
@@ -798,15 +840,47 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const createBanner = (draft: BannerDraft) => {
-    setState((current) => ({ ...current, banners: [{ ...draft, id: `banner-${Date.now()}` }, ...current.banners] }));
+    void (async () => {
+      try {
+        await fetch("/api/banners", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(draft),
+        });
+        await refreshCollections();
+      } catch {
+        // Keep optimistic state if sync fails.
+        setState((current) => ({ ...current, banners: [{ ...draft, id: `banner-${Date.now()}` }, ...current.banners] }));
+      }
+    })();
   };
 
   const updateBanner = (bannerId: string, draft: BannerDraft) => {
-    setState((current) => ({ ...current, banners: current.banners.map((banner) => banner.id === bannerId ? { ...banner, ...draft } : banner) }));
+    void (async () => {
+      try {
+        await fetch(`/api/banners/${bannerId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(draft),
+        });
+        await refreshCollections();
+      } catch {
+        // Keep optimistic state if sync fails.
+        setState((current) => ({ ...current, banners: current.banners.map((banner) => banner.id === bannerId ? { ...banner, ...draft } : banner) }));
+      }
+    })();
   };
 
   const deleteBanner = (bannerId: string) => {
-    setState((current) => ({ ...current, banners: current.banners.filter((banner) => banner.id !== bannerId) }));
+    void (async () => {
+      try {
+        await fetch(`/api/banners/${bannerId}`, { method: "DELETE" });
+        await refreshCollections();
+      } catch {
+        // Keep optimistic state if sync fails.
+        setState((current) => ({ ...current, banners: current.banners.filter((banner) => banner.id !== bannerId) }));
+      }
+    })();
   };
 
   const value: StoreContextValue = {

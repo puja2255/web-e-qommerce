@@ -28,6 +28,7 @@ export interface Banner {
   imageUrl: string;
   link: string;
   isActive: boolean;
+  sortOrder?: number;
 }
 
 export interface Product {
@@ -93,6 +94,7 @@ export interface Order {
   paymentStatus: PaymentStatus;
   paymentMethodId: string;
   paymentProofUrl?: string;
+  shippingService?: "REGULER" | "INSTANT";
   totalAmount: number;
   shippingFee: number;
   adminNote: string;
@@ -111,6 +113,7 @@ export interface CustomerSession {
 
 export interface CustomerAddress {
   id: string;
+  customerId?: string;
   type?: "RECIPIENT" | "STORE" | "RETURN";
   label: string;
   recipientName: string;

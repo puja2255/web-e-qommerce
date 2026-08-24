@@ -43,6 +43,7 @@ model User {
   phone        String?
   role         Role     @default(CUSTOMER)
   orders       Order[]
+  addresses    CustomerAddress[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   otpCodes     OtpCode[]
@@ -131,6 +132,7 @@ model Order {
   paymentMethodId  String
   paymentMethod    PaymentMethod @relation(fields: [paymentMethodId], references: [id])
   paymentProofUrl  String?
+  shippingService  String        @default("REGULER")
   totalAmount      Int
   shippingFee      Int           @default(0)
   adminNote        String?
@@ -140,6 +142,42 @@ model Order {
   items            OrderItem[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+}
+
+model CustomerAddress {
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type           String   @default("RECIPIENT")
+  label          String
+  recipientName  String
+  phone          String
+  province       String
+  city           String
+  district       String
+  detail         String
+  postalCode     String?
+  latitude       Float?
+  longitude      Float?
+  mapsUrl        String?
+  isPrimary      Boolean  @default(false)
+  isVerified     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+model Banner {
+  id         String   @id @default(cuid())
+  title      String
+  subtitle   String
+  imageUrl   String
+  link       String
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model OrderItem {

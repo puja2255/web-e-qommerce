@@ -6,8 +6,6 @@ import { Crosshair, PencilLine, Plus, ShieldCheck, X } from "lucide-react";
 import { googleMapsEmbedUrl, googleMapsUrl } from "@/lib/address-service";
 import type { CustomerAddress } from "@/lib/types";
 
-type Region = { id: string; name: string };
-
 type AddressInput = Omit<CustomerAddress, "id"> & { id?: string };
 
 type Props = {
@@ -17,12 +15,6 @@ type Props = {
   onSave: (address: AddressInput) => void;
   onDelete: (id: string) => void;
 };
-
-async function loadRegions(level: "provinces" | "regencies" | "districts", parentId?: string) {
-  const response = await fetch(`/api/regions?level=${level}${parentId ? `&parentId=${parentId}` : ""}`);
-  if (!response.ok) throw new Error("Wilayah tidak dapat dimuat");
-  return (await response.json()) as Region[];
-}
 
 const emptyPosition = null as { latitude: number; longitude: number } | null;
 
@@ -38,47 +30,11 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
   const [phoneInput, setPhoneInput] = useState(phone);
   const [detail, setDetail] = useState("");
   const [mapsLink, setMapsLink] = useState("");
-  const [provinces, setProvinces] = useState<Region[]>([]);
-  const [cities, setCities] = useState<Region[]>([]);
-  const [districts, setDistricts] = useState<Region[]>([]);
-  const [provinceId, setProvinceId] = useState("");
-  const [cityId, setCityId] = useState("");
-  const [districtId, setDistrictId] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [position, setPosition] = useState(emptyPosition);
-  const [message, setMessage] = useState("Pilih wilayah dan titik lokasi.");
+  const [message, setMessage] = useState("Masukkan alamat dan titik lokasi.");
   const [editingAddress, setEditingAddress] = useState<CustomerAddress | null>(null);
-
-  const province = provinces.find((item) => item.id === provinceId)?.name ?? "";
-  const city = cities.find((item) => item.id === cityId)?.name ?? "";
-  const district = districts.find((item) => item.id === districtId)?.name ?? "";
-  const verified = Boolean(provinceId && cityId && districtId && (position || mapsLink));
-
-  useEffect(() => {
-    void loadRegions("provinces")
-      .then(setProvinces)
-      .catch(() => setMessage("Data wilayah belum dapat dimuat."));
-  }, []);
-
-  useEffect(() => {
-    if (provinceId) void loadRegions("regencies", provinceId).then(setCities);
-  }, [provinceId]);
-
-  useEffect(() => {
-    if (cityId) void loadRegions("districts", cityId).then(setDistricts);
-  }, [cityId]);
-
-  useEffect(() => {
-    if (!editingAddress) return;
-
-    const provinceMatch = provinces.find((item) => item.name === editingAddress.province);
-    const cityMatch = cities.find((item) => item.name === editingAddress.city);
-    const districtMatch = districts.find((item) => item.name === editingAddress.district);
-
-    if (provinceMatch && provinceId !== provinceMatch.id) setProvinceId(provinceMatch.id);
-    if (cityMatch && cityId !== cityMatch.id) setCityId(cityMatch.id);
-    if (districtMatch && districtId !== districtMatch.id) setDistrictId(districtMatch.id);
-  }, [editingAddress, provinces, cities, districts, provinceId, cityId, districtId]);
+  const verified = Boolean(detail.trim() && (position || mapsLink.trim()));
 
   useEffect(() => {
     if (editingId) return;
@@ -94,12 +50,9 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
     setPhoneInput(phone);
     setDetail("");
     setMapsLink("");
-    setProvinceId("");
-    setCityId("");
-    setDistrictId("");
     setPostalCode("");
     setPosition(emptyPosition);
-    setMessage("Pilih wilayah dan titik lokasi.");
+    setMessage("Masukkan alamat dan titik lokasi.");
   };
 
   const loadAddressToForm = (address: CustomerAddress) => {
@@ -111,9 +64,6 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
     setDetail(address.detail);
     setPostalCode(address.postalCode ?? "");
     setMapsLink(address.mapsUrl ?? "");
-    setProvinceId(provinces.find((item) => item.name === address.province)?.id ?? "");
-    setCityId(cities.find((item) => item.name === address.city)?.id ?? "");
-    setDistrictId(districts.find((item) => item.name === address.district)?.id ?? "");
     setPosition(
       address.latitude != null && address.longitude != null
         ? { latitude: address.latitude, longitude: address.longitude }
@@ -141,7 +91,7 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!detail || !verified) {
-      setMessage("Lengkapi wilayah, alamat, dan titik lokasi.");
+      setMessage("Lengkapi alamat dan titik lokasi.");
       return;
     }
 
@@ -151,9 +101,9 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
       label,
       recipientName: recipientNameInput,
       phone: phoneInput,
-      province,
-      city,
-      district,
+      province: "",
+      city: "",
+      district: "",
       detail,
       postalCode,
       isPrimary: !recipientAddresses.length || recipientAddresses.some((item) => item.id === editingId && item.isPrimary),
@@ -179,7 +129,8 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
                 {address.recipientName} | {address.phone}
               </div>
               <div className="muted tiny">
-                {address.detail}, {address.district}, {address.city}, {address.province} {address.postalCode}
+                {address.detail}
+                {address.postalCode ? `, ${address.postalCode}` : ""}
               </div>
             </div>
             <div className="row-actions" style={{ marginTop: 0 }}>
@@ -216,57 +167,6 @@ export function AddressForm({ addresses, recipientName, phone, onSave, onDelete 
         </div>
 
         <div className="field-grid">
-          <div className="field">
-            <label>Provinsi</label>
-            <select
-              className="select"
-              value={provinceId}
-              onChange={(e) => {
-                setProvinceId(e.target.value);
-                setCityId("");
-                setDistrictId("");
-              }}
-              required
-            >
-              <option value="">Pilih provinsi</option>
-              {provinces.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Kabupaten/Kota</label>
-            <select
-              className="select"
-              value={cityId}
-              onChange={(e) => {
-                setCityId(e.target.value);
-                setDistrictId("");
-              }}
-              disabled={!provinceId}
-              required
-            >
-              <option value="">Pilih kabupaten/kota</option>
-              {cities.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Kecamatan</label>
-            <select className="select" value={districtId} onChange={(e) => setDistrictId(e.target.value)} disabled={!cityId} required>
-              <option value="">Pilih kecamatan</option>
-              {districts.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="field">
             <label>Kode pos</label>
             <input className="input" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />

@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       mapsLink: typeof body.mapsLink === "string" ? body.mapsLink : "",
       notes: typeof body.notes === "string" ? body.notes : "",
       paymentMethodId: body.paymentMethodId,
+      shippingService: body.shippingService === "INSTANT" ? "INSTANT" : "REGULER",
       paymentProofUrl: typeof body.paymentProofUrl === "string" ? body.paymentProofUrl : undefined,
       customerId: customer.id,
       shippingFee: typeof body.shippingFee === "number" ? body.shippingFee : undefined,

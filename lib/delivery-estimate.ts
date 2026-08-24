@@ -18,5 +18,5 @@ export function deliveryEstimateLabel(orderDate: string | Date = new Date()) {
   const earliest = addDays(createdAt, DELIVERY_MIN_DAYS);
   const latest = addDays(createdAt, DELIVERY_MAX_DAYS);
 
-  return `3–7 hari (${dateFormatter.format(earliest)}–${dateFormatter.format(latest)})`;
+  return `3-7 hari (${dateFormatter.format(earliest)} - ${dateFormatter.format(latest)})`;
 }

@@ -73,16 +73,6 @@ export default function AdminOrdersPage() {
   }, [orders, query, startDate, endDate, monthFilter, yearFilter, productFilter, categoryFilter, productMap]);
 
   const exportOrdersExcel = async () => {
-    const filterNotes = [
-      `Pencarian: ${query || "Semua"}`,
-      `Dari Tanggal: ${startDate || "-"}`,
-      `Sampai Tanggal: ${endDate || "-"}`,
-      `Bulan: ${monthFilter ? new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2026, Number(monthFilter) - 1, 1)) : "Semua"}`,
-      `Tahun: ${yearFilter || "Semua"}`,
-      `Produk: ${productFilter ? (productMap.get(productFilter)?.name || productFilter) : "Semua"}`,
-      `Kategori: ${categoryFilter ? (categories.find((item) => item.id === categoryFilter)?.name || categoryFilter) : "Semua"}`,
-    ];
-
     const rows = visibleOrders.flatMap((order, index) => {
       const paymentMethod = paymentMethodMap.get(order.paymentMethodId);
       const itemLines = order.items.map((item) => item.productName).join(", ");
@@ -109,10 +99,9 @@ export default function AdminOrdersPage() {
 
     await downloadExcelHtmlReport({
       fileName: `laporan-riwayat-pesanan-pt-golden-ib.xls`,
-      title: "LAPORAN RIWAYAT PESANAN",
-      subtitle: "Data pesanan yang difilter dari sistem Golden Store",
       companyName: "PT GOLDEN IB",
       companyAddress: "Jl. Griya Harapan No.12, Way Halim Permai, Kec. Way Halim, Kota Bandar Lampung, Lampung 35133",
+      printedAt: new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short" }).format(new Date()),
       columns: [
         { label: "No", align: "center", width: "40px" },
         { label: "Kode Pesanan", align: "center", width: "95px" },
@@ -129,9 +118,6 @@ export default function AdminOrdersPage() {
         { label: "Total Item", align: "center", width: "60px" },
       ],
       rows,
-      notes: filterNotes,
-      signatureLeft: "Mengetahui",
-      signatureRight: "Admin Toko",
     });
   };
 
