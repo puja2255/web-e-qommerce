@@ -69,7 +69,7 @@ export default function AdminPaymentsPage() {
               <select className="select" value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value as PaymentMethodDraft["type"] })}>
                 <option value="COD">COD</option>
                 <option value="BANK_TRANSFER">Bank Transfer</option>
-                <option value="E_WALLET">DANA</option>
+                <option value="E_WALLET">E-Wallet</option>
               </select>
             </div>
             <div className="field">

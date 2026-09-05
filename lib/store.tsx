@@ -40,6 +40,7 @@ export interface ProductDraft {
   name: string;
   description: string;
   categoryId: string;
+  categoryIds: string[];
   price: number;
   compareAtPrice?: number;
   stock: number;
@@ -563,6 +564,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         slug,
         description: draft.description,
         categoryId: draft.categoryId,
+        categoryIds: draft.categoryIds,
         price: draft.price,
         compareAtPrice: draft.compareAtPrice,
         stock: draft.stock,
@@ -612,6 +614,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               slug: slugify(draft.name),
               description: draft.description,
               categoryId: draft.categoryId,
+              categoryIds: draft.categoryIds,
               price: draft.price,
               compareAtPrice: draft.compareAtPrice,
               stock: draft.stock,

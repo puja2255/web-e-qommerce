@@ -65,7 +65,7 @@ export default function AdminOrdersPage() {
         !categoryFilter ||
         order.items.some((item) => {
           const product = productMap.get(item.productId);
-          return product?.categoryId === categoryFilter;
+          return product && (product.categoryIds?.length ? product.categoryIds : [product.categoryId]).includes(categoryFilter);
         });
 
       return matchesSearch && matchesRange && matchesMonth && matchesYear && matchesProduct && matchesCategory;
@@ -73,6 +73,10 @@ export default function AdminOrdersPage() {
   }, [orders, query, startDate, endDate, monthFilter, yearFilter, productFilter, categoryFilter, productMap]);
 
   const exportOrdersExcel = async () => {
+    const formatReportDate = (value: number) => new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
+    const reportPeriod = startDate || endDate
+      ? `${startDate ? formatReportDate(new Date(`${startDate}T00:00:00`).getTime()) : "Awal data"} s.d. ${endDate ? formatReportDate(new Date(`${endDate}T00:00:00`).getTime()) : "Akhir data"}`
+      : "Semua periode";
     const rows = visibleOrders.flatMap((order, index) => {
       const paymentMethod = paymentMethodMap.get(order.paymentMethodId);
       const itemLines = order.items.map((item) => item.productName).join(", ");
@@ -101,7 +105,10 @@ export default function AdminOrdersPage() {
       fileName: `laporan-riwayat-pesanan-pt-golden-ib.xls`,
       companyName: "PT GOLDEN IB",
       companyAddress: "Jl. Griya Harapan No.12, Way Halim Permai, Kec. Way Halim, Kota Bandar Lampung, Lampung 35133",
+      reportTitle: "LAPORAN RIWAYAT PESANAN",
+      reportPeriod: `Periode: ${reportPeriod}`,
       printedAt: new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short" }).format(new Date()),
+      notes: ["Laporan riwayat pesanan yang tercatat pada sistem.", `Jumlah pesanan: ${visibleOrders.length}`],
       columns: [
         { label: "No", align: "center", width: "40px" },
         { label: "Kode Pesanan", align: "center", width: "95px" },

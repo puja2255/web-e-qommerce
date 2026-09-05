@@ -12,7 +12,10 @@ export interface ExcelExportOptions {
   fileName: string;
   companyName: string;
   companyAddress: string;
+  reportTitle?: string;
+  reportPeriod?: string;
   printedAt: string;
+  notes?: string[];
   columns: ExcelTableColumn[];
   rows: string[][];
 }
@@ -31,11 +34,46 @@ const alignClass = (align: Align = "left") => {
   return "left";
 };
 
+function normalizeColumnWidths(columns: ExcelTableColumn[]) {
+  const parsed = columns.map((column) => {
+    if (!column.width) {
+      return { raw: column.width, percent: null };
+    }
+
+    const match = /^(\d+(?:\.\d+)?)(px|%)$/.exec(column.width.trim());
+    if (!match) {
+      return { raw: column.width, percent: null };
+    }
+
+    const value = Number(match[1]);
+    if (Number.isNaN(value)) {
+      return { raw: column.width, percent: null };
+    }
+
+    return { raw: column.width, percent: match[2] === "%" ? value : null, px: match[2] === "px" ? value : null };
+  });
+
+  const explicitPercentTotal = parsed.reduce((sum, item) => sum + (item.percent ?? 0), 0);
+  const explicitPxTotal = parsed.reduce((sum, item) => sum + (item.px ?? 0), 0);
+  const remainingForPx = Math.max(100 - explicitPercentTotal, 0);
+
+  if (explicitPxTotal > 0) {
+    return parsed.map((item) => {
+      if (item.percent != null) return `${item.percent}%`;
+      if (item.px != null) return `${(item.px / explicitPxTotal) * remainingForPx}%`;
+      return null;
+    });
+  }
+
+  return parsed.map((item) => (item.percent != null ? `${item.percent}%` : null));
+}
+
 export async function downloadExcelHtmlReport(options: ExcelExportOptions) {
+  const normalizedWidths = normalizeColumnWidths(options.columns);
   const headerColumns = options.columns
     .map(
       (column) =>
-        `<th${column.width ? ` style="width:${column.width}"` : ""} class="${alignClass(column.align ?? "center")}">${escapeHtml(column.label)}</th>`,
+        `<th class="${alignClass(column.align ?? "center")}">${escapeHtml(column.label)}</th>`,
     )
     .join("");
   const bodyRows = options.rows.length
@@ -66,7 +104,7 @@ export async function downloadExcelHtmlReport(options: ExcelExportOptions) {
       }
       .header {
         text-align: center;
-        margin-bottom: 24px;
+        margin-bottom: 34px;
       }
       .company-name {
         font-size: 16pt;
@@ -77,23 +115,45 @@ export async function downloadExcelHtmlReport(options: ExcelExportOptions) {
         font-size: 10pt;
         margin-top: 2px;
       }
+      .report-title {
+        font-size: 14pt;
+        font-weight: 700;
+        margin-top: 8px;
+      }
+      .report-period {
+        font-size: 10pt;
+        margin-top: 4px;
+      }
       .print-date {
         text-align: center;
         font-size: 9.5pt;
-        margin-top: 6px;
+        margin-top: 4px;
+      }
+      .report-notes {
+        text-align: center;
+        font-size: 9.5pt;
+        line-height: 1.45;
+        margin: 12px 0 8px;
       }
       .header-gap {
-        height: 10px;
+        height: 8px;
       }
       table {
         width: 100%;
+        table-layout: fixed;
         border-collapse: collapse;
-        margin: 0 auto;
+        margin: 18px auto 0;
+      }
+      colgroup col {
+        width: auto;
       }
       th, td {
         border: 1px solid #111;
-        padding: 6px 8px;
+        padding: 5px 6px;
         vertical-align: top;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
       th {
         background: #efefef;
@@ -129,10 +189,16 @@ export async function downloadExcelHtmlReport(options: ExcelExportOptions) {
       <div class="header">
         <div class="company-name">${escapeHtml(options.companyName)}</div>
         <div class="company-address">${escapeHtml(options.companyAddress)}</div>
+        ${options.reportTitle ? `<div class="report-title">${escapeHtml(options.reportTitle)}</div>` : ""}
+        ${options.reportPeriod ? `<div class="report-period">${escapeHtml(options.reportPeriod)}</div>` : ""}
         <div class="print-date">Tanggal cetak: ${escapeHtml(options.printedAt)}</div>
       </div>
+      ${options.notes?.length ? `<div class="report-notes">${options.notes.map((note) => escapeHtml(note)).join("<br />")}</div>` : ""}
       <div class="header-gap"></div>
       <table>
+        <colgroup>
+          ${normalizedWidths.map((width) => `<col${width ? ` style="width:${width}"` : ""}>`).join("")}
+        </colgroup>
         <thead><tr>${headerColumns}</tr></thead>
         <tbody>${bodyRows}</tbody>
       </table>

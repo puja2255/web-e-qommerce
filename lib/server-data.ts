@@ -92,6 +92,7 @@ function mapProduct(product: {
   rating: number;
   reviewsCount: number;
   images: Array<{ url: string }>;
+  categories: Array<{ categoryId: string }>;
 }): Product {
   return {
     id: product.id,
@@ -99,6 +100,7 @@ function mapProduct(product: {
     slug: product.slug,
     description: product.description,
     categoryId: product.categoryId,
+    categoryIds: product.categories.map((item) => item.categoryId),
     price: product.price,
     compareAtPrice: product.compareAtPrice ?? undefined,
     stock: product.stock,
@@ -215,6 +217,7 @@ async function queryState(): Promise<Pick<AppState, "categories" | "paymentMetho
         images: {
           orderBy: { sortOrder: "asc" },
         },
+        categories: true,
       },
     }),
     prisma.order.findMany({
@@ -319,6 +322,7 @@ export async function createProductRecord(data: {
   name: string;
   description: string;
   categoryId: string;
+  categoryIds?: string[];
   price: number;
   compareAtPrice?: number;
   stock: number;
@@ -337,6 +341,7 @@ export async function createProductRecord(data: {
       slug,
       description: data.description,
       categoryId: data.categoryId,
+      categories: { create: (data.categoryIds?.length ? data.categoryIds : [data.categoryId]).map((categoryId) => ({ category: { connect: { id: categoryId } } })) },
       price: data.price,
       compareAtPrice: data.compareAtPrice,
       stock: data.stock,
@@ -356,6 +361,7 @@ export async function createProductRecord(data: {
     },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
+      categories: true,
     },
   });
 }
@@ -366,6 +372,7 @@ export async function updateProductRecord(
     name: string;
     description: string;
     categoryId: string;
+    categoryIds?: string[];
     price: number;
     compareAtPrice?: number;
     stock: number;
@@ -386,6 +393,10 @@ export async function updateProductRecord(
       slug,
       description: data.description,
       categoryId: data.categoryId,
+      categories: {
+        deleteMany: {},
+        create: (data.categoryIds?.length ? data.categoryIds : [data.categoryId]).map((categoryId) => ({ category: { connect: { id: categoryId } } })),
+      },
       price: data.price,
       compareAtPrice: data.compareAtPrice,
       stock: data.stock,
@@ -406,6 +417,7 @@ export async function updateProductRecord(
     },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
+      categories: true,
     },
   });
 }

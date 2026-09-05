@@ -37,6 +37,7 @@ export interface Product {
   slug: string;
   description: string;
   categoryId: string;
+  categoryIds?: string[];
   price: number;
   compareAtPrice?: number;
   stock: number;

@@ -8,6 +8,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     name: body.name,
     description: body.description,
     categoryId: body.categoryId,
+    categoryIds: Array.isArray(body.categoryIds) ? body.categoryIds : undefined,
     price: Number(body.price),
     compareAtPrice: body.compareAtPrice ? Number(body.compareAtPrice) : undefined,
     stock: Number(body.stock),
@@ -30,4 +31,3 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
 
   return NextResponse.json({ ok: true });
 }
-

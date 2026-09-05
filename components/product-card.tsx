@@ -17,7 +17,7 @@ export function ProductCard({
   const outOfStock = product.stock <= 0;
 
   // Hapus awalan "Rp"
-  const formattedPriceNumber = formatCurrency(product.price)
+  const formattedPriceNumber = formatCurrency(product.compareAtPrice ?? product.price)
     .replace(/Rp\s?/gi, "")
     .trim();
 

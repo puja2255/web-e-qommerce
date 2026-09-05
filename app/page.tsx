@@ -179,7 +179,7 @@ export default function HomePage() {
                 <ProductCard
                   product={product}
                   categoryName={
-                    categories.find((category) => category.id === product.categoryId)?.name ?? "Produk"
+                    categories.filter((category) => (product.categoryIds?.length ? product.categoryIds : [product.categoryId]).includes(category.id)).map((category) => category.name).join(", ") || "Produk"
                   }
                   onAddToCart={addToCart}
                 />

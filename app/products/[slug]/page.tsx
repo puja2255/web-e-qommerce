@@ -75,9 +75,10 @@ export default function ProductDetailPage() {
     );
   }
 
-  const categoryName = categories.find((category) => category.id === product.categoryId)?.name ?? "Produk";
+  const productCategoryIds = product.categoryIds?.length ? product.categoryIds : [product.categoryId];
+  const categoryName = categories.filter((category) => productCategoryIds.includes(category.id)).map((category) => category.name).join(", ") || "Produk";
   const mainImage = getMainImage(product);
-  const relatedProducts = products.filter((item) => item.categoryId === product.categoryId && item.id !== product.id).slice(0, 3);
+  const relatedProducts = products.filter((item) => (item.categoryIds?.length ? item.categoryIds : [item.categoryId]).some((id) => productCategoryIds.includes(id)) && item.id !== product.id).slice(0, 3);
 
   return (
     <div className="stack" style={{ gap: 22 }}>
@@ -113,10 +114,10 @@ export default function ProductDetailPage() {
 
           <h1 style={{ marginBottom: 10 }}>{product.name}</h1>
           <p className="muted">{product.description}</p>
-          <div style={{ fontSize: "2rem", fontWeight: 800 }}>{formatCurrency(product.price)}</div>
+          <div style={{ fontSize: "2rem", fontWeight: 800 }}>{formatCurrency(product.compareAtPrice ?? product.price)}</div>
           {product.compareAtPrice ? (
             <div className="muted" style={{ textDecoration: "line-through" }}>
-              {formatCurrency(product.compareAtPrice)}
+              {formatCurrency(product.price)}
             </div>
           ) : null}
 

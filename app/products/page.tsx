@@ -20,7 +20,7 @@ export default function ProductsPage() {
         product.description.toLowerCase().includes(query.toLowerCase()) ||
         product.tags.some((tag) => tag.toLowerCase().includes(query.toLowerCase()));
 
-      const matchesCategory = categoryId === "all" || product.categoryId === categoryId;
+      const matchesCategory = categoryId === "all" || (product.categoryIds?.length ? product.categoryIds : [product.categoryId]).includes(categoryId);
 
       return product.isActive && matchesQuery && matchesCategory;
     });
@@ -113,8 +113,7 @@ export default function ProductsPage() {
         }}
       >
         {visibleProducts.map((product) => {
-          const categoryName =
-            categories.find((category) => category.id === product.categoryId)?.name ?? "Produk";
+          const categoryName = categories.filter((category) => (product.categoryIds?.length ? product.categoryIds : [product.categoryId]).includes(category.id)).map((category) => category.name).join(", ") || "Produk";
           return (
             <ProductCard
               key={product.id}

@@ -70,6 +70,7 @@ model Category {
   description String?
   isActive    Boolean   @default(true)
   products    Product[]
+  productCategories ProductCategory[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -94,6 +95,7 @@ model Product {
   description   String
   categoryId    String
   category      Category       @relation(fields: [categoryId], references: [id])
+  categories    ProductCategory[]
   price         Int
   compareAtPrice Int?
   stock         Int            @default(0)
@@ -142,6 +144,16 @@ model Order {
   items            OrderItem[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+}
+
+model ProductCategory {
+  productId  String
+  categoryId String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([categoryId])
 }
 
 model CustomerAddress {

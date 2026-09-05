@@ -52,7 +52,7 @@ export default function AdminReportsPage() {
         !categoryFilter ||
         order.items.some((item) => {
           const product = productMap.get(item.productId);
-          return product?.categoryId === categoryFilter;
+          return product && (product.categoryIds?.length ? product.categoryIds : [product.categoryId]).includes(categoryFilter);
         });
       const matchesResult =
         resultFilter === "all" ? true : resultFilter === "success" ? isSuccess : !isSuccess;
@@ -70,12 +70,15 @@ export default function AdminReportsPage() {
   const financialReport = useMemo(() => buildMonthlyFinancialReport(filteredOrders), [filteredOrders]);
   const totalOperationalCost = financialReport.reduce((sum, item) => sum + item.operationalCost, 0);
   const totalNetProfit = financialReport.reduce((sum, item) => sum + item.labaBersih, 0);
-  const reportPeriod =
-    startDate || endDate
-      ? `${startDate || "Awal data"} s.d. ${endDate || "Akhir data"}`
-      : monthFilter || yearFilter
-        ? `${monthFilter ? new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2026, Number(monthFilter) - 1, 1)) : "Semua bulan"}${yearFilter ? ` ${yearFilter}` : ""}`
-        : "Seluruh periode";
+  const filteredTimestamps = filteredOrders.map((order) => new Date(order.createdAt).getTime()).filter(Number.isFinite);
+  const formatReportDate = (value: number) => new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
+  const reportPeriod = startDate || endDate
+    ? `${startDate ? formatReportDate(new Date(`${startDate}T00:00:00`).getTime()) : "Awal data"} s.d. ${endDate ? formatReportDate(new Date(`${endDate}T00:00:00`).getTime()) : "Akhir data"}`
+    : monthFilter || yearFilter
+      ? filteredTimestamps.length > 0
+        ? `${formatReportDate(Math.min(...filteredTimestamps))} s.d. ${formatReportDate(Math.max(...filteredTimestamps))}`
+        : "Tidak ada tanggal"
+      : "Semua periode";
   const printedAt = new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short" }).format(new Date());
 
   const exportExcel = async () => {
@@ -83,7 +86,13 @@ export default function AdminReportsPage() {
       fileName: "laporan-keuangan-pt-golden-ib.xls",
       companyName: "PT GOLDEN IB",
       companyAddress: "Jl. Griya Harapan No.12, Way Halim Permai, Kec. Way Halim, Kota Bandar Lampung, Lampung 35133",
+      reportTitle: "LAPORAN KEUANGAN BULANAN",
+      reportPeriod: `Periode: ${reportPeriod}`,
       printedAt,
+      notes: [
+        "Laporan ini dihitung dari data penjualan yang sudah tercatat pada sistem.",
+        `Order berhasil: ${successfulOrders.length} | Order gagal: ${failedOrders.length}`,
+      ],
       columns: [
         { label: "Periode", width: "120px" },
         { label: "Pendapatan", align: "right", width: "100px" },

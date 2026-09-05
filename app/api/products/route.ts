@@ -12,6 +12,7 @@ export async function POST(request: Request) {
     name: body.name,
     description: body.description,
     categoryId: body.categoryId,
+    categoryIds: Array.isArray(body.categoryIds) ? body.categoryIds : undefined,
     price: Number(body.price),
     compareAtPrice: body.compareAtPrice ? Number(body.compareAtPrice) : undefined,
     stock: Number(body.stock),
@@ -26,4 +27,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json(product, { status: 201 });
 }
-
