@@ -29,8 +29,6 @@ const emptyDraft: ProductDraft = {
   images: [],
   tags: [],
   freeShippingPromo: false,
-  rating: 4.5,
-  reviewsCount: 0,
 };
 
 export default function AdminProductsPage() {
@@ -69,8 +67,6 @@ export default function AdminProductsPage() {
       images: product.images,
       tags: product.tags.filter((tag) => tag !== FREE_SHIPPING_TAG),
       freeShippingPromo: product.tags.includes(FREE_SHIPPING_TAG),
-      rating: product.rating,
-      reviewsCount: product.reviewsCount,
     });
     setImagesText("");
     setImageUploads(product.images.map((src, index) => ({ name: `Gambar ${index + 1}`, src })));

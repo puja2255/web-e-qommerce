@@ -21,8 +21,6 @@ export async function POST(request: Request) {
     isActive: Boolean(body.isActive),
     images: Array.isArray(body.images) ? body.images : [],
     tags: Array.isArray(body.tags) ? body.tags : [],
-    rating: Number(body.rating ?? 4.5),
-    reviewsCount: Number(body.reviewsCount ?? 0),
   });
 
   return NextResponse.json(product, { status: 201 });

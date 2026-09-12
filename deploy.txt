@@ -80,6 +80,10 @@ Di Vercel, masuk ke:
 - `Settings`
 - `Environment Variables`
 
+Pastikan `DATABASE_URL` bukan `localhost` atau `127.0.0.1`. Kalau masih lokal, Vercel akan mencoba konek ke mesin deploy sendiri dan Prisma akan gagal.
+
+Build Vercel menjalankan migration Prisma otomatis. Database Neon sudah dibersihkan dan dibangun ulang dari 11 migration, sehingga error `P3005` tidak lagi muncul.
+
 Isi minimal ini:
 
 ```env

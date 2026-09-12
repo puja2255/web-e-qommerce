@@ -331,8 +331,6 @@ export async function createProductRecord(data: {
   isActive: boolean;
   images: string[];
   tags: string[];
-  rating: number;
-  reviewsCount: number;
 }) {
   const slug = await nextUniqueSlug("product", data.name);
   return prisma.product.create({
@@ -349,8 +347,8 @@ export async function createProductRecord(data: {
       isFeatured: data.isFeatured,
       isActive: data.isActive,
       tags: data.tags,
-      rating: data.rating,
-      reviewsCount: data.reviewsCount,
+      rating: 0,
+      reviewsCount: 0,
       images: {
         create: data.images.map((url, index) => ({
           url,
@@ -381,8 +379,6 @@ export async function updateProductRecord(
     isActive: boolean;
     images: string[];
     tags: string[];
-    rating: number;
-    reviewsCount: number;
   },
 ) {
   const slug = await nextUniqueSlug("product", data.name, id);
@@ -404,8 +400,6 @@ export async function updateProductRecord(
       isFeatured: data.isFeatured,
       isActive: data.isActive,
       tags: data.tags,
-      rating: data.rating,
-      reviewsCount: data.reviewsCount,
       images: {
         deleteMany: {},
         create: data.images.map((url, index) => ({

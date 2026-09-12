@@ -30,6 +30,12 @@ Golden Store adalah starter e-commerce bertema kuning emas dengan mode gelap dan
 6. Jalankan seed data dengan `npx prisma db seed`
 7. Jalankan aplikasi dengan `npm run dev`
 
+## Deploy
+
+- Jangan pakai `DATABASE_URL` yang masih mengarah ke `localhost` di production.
+- Untuk Vercel, isi `DATABASE_URL` dengan PostgreSQL cloud lalu redeploy setelah env diubah.
+- Jika tidak, Prisma akan gagal connect saat request admin, produk, kategori, atau checkout diproses.
+
 ## Catatan Windows
 
 Kalau PowerShell menolak `npx` dengan error `running scripts is disabled`, pakai:

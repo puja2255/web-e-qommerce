@@ -50,8 +50,6 @@ export interface ProductDraft {
   images: string[];
   tags: string[];
   freeShippingPromo: boolean;
-  rating: number;
-  reviewsCount: number;
 }
 
 export interface CategoryDraft {
@@ -573,8 +571,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         isActive: draft.isActive,
         images: draft.images,
         tags,
-        rating: draft.rating,
-        reviewsCount: draft.reviewsCount,
+        rating: 0,
+        reviewsCount: 0,
       };
 
       return {
@@ -623,8 +621,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               isActive: draft.isActive,
               images: draft.images,
               tags,
-              rating: draft.rating,
-              reviewsCount: draft.reviewsCount,
             }
           : product,
       ),

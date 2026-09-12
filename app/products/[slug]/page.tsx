@@ -30,7 +30,10 @@ export default function ProductDetailPage() {
   const { products, categories, addToCart } = useGoldenStore();
   const product = products.find((item) => item.slug === slug);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewSummary, setReviewSummary] = useState({ rating: product?.rating ?? 0, reviewsCount: product?.reviewsCount ?? 0 });
+  const [reviewSummary, setReviewSummary] = useState({
+    rating: product?.reviewsCount ? product.rating : 0,
+    reviewsCount: product?.reviewsCount ?? 0,
+  });
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [, setFeedback] = useState("");
 
@@ -41,7 +44,10 @@ export default function ProductDetailPage() {
     }
 
     let active = true;
-    setReviewSummary({ rating: product.rating, reviewsCount: product.reviewsCount });
+    setReviewSummary({
+      rating: product.reviewsCount > 0 ? product.rating : 0,
+      reviewsCount: product.reviewsCount,
+    });
     setLoadingReviews(true);
     fetch(`/api/products/${product.id}/reviews`, { cache: "no-store" })
       .then(async (response) => {
@@ -104,16 +110,17 @@ export default function ProductDetailPage() {
         <div className="panel">
           <div className="nav-links" style={{ justifyContent: "space-between" }}>
             <span className="badge">{categoryName}</span>
-            <span className="badge-soft">
-              <Star size={14} />
-              {product.rating} dari {product.reviewsCount} ulasan
-            </span>
+            {product.reviewsCount > 0 ? (
+              <span className="badge-soft">
+                <Star size={14} />
+                {product.rating} dari {product.reviewsCount} ulasan
+              </span>
+            ) : null}
           </div>
 
           {product.tags.includes(FREE_SHIPPING_TAG) ? <span className="badge">Gratis ongkir</span> : null}
 
           <h1 style={{ marginBottom: 10 }}>{product.name}</h1>
-          <p className="muted">{product.description}</p>
           <div style={{ fontSize: "2rem", fontWeight: 800 }}>{formatCurrency(product.compareAtPrice ?? product.price)}</div>
           {product.compareAtPrice ? (
             <div className="muted" style={{ textDecoration: "line-through" }}>
@@ -130,6 +137,11 @@ export default function ProductDetailPage() {
               <CheckCircle2 size={14} />
               {product.stock > 0 ? `${product.stock} stok tersedia` : "Produk habis"}
             </span>
+          </div>
+
+          <div className="muted-box" style={{ marginTop: 18 }}>
+            <strong>Deskripsi</strong>
+            <p className="muted" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", marginBottom: 0 }}>{product.description}</p>
           </div>
 
           <div className="muted-box" style={{ marginTop: 18 }}>
@@ -151,17 +163,19 @@ export default function ProductDetailPage() {
             <MessageSquareText size={14} />
             Ulasan pembeli
           </div>
-          <div className="review-summary">
-            <strong>{reviewSummary.rating.toFixed(1)}</strong>
-            <div>
-              <div className="review-stars" aria-label={`Rating ${reviewSummary.rating} dari 5`}>
-                {Array.from({ length: 5 }, (_, index) => (
-                  <Star key={index} size={18} fill={index < Math.round(reviewSummary.rating) ? "currentColor" : "none"} />
-                ))}
+          {reviewSummary.reviewsCount > 0 ? (
+            <div className="review-summary">
+              <strong>{reviewSummary.rating.toFixed(1)}</strong>
+              <div>
+                <div className="review-stars" aria-label={`Rating ${reviewSummary.rating} dari 5`}>
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <Star key={index} size={18} fill={index < Math.round(reviewSummary.rating) ? "currentColor" : "none"} />
+                  ))}
+                </div>
+                <span className="muted">{reviewSummary.reviewsCount} ulasan terverifikasi</span>
               </div>
-              <span className="muted">{reviewSummary.reviewsCount} ulasan terverifikasi</span>
             </div>
-          </div>
+          ) : null}
 
           <div className="review-list" aria-live="polite">
             {loadingReviews ? <p className="muted">Memuat ulasan...</p> : null}
